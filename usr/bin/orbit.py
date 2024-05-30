@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Script by Yono Irenk (Kartolo)
-# Youtube Aryo Brokolly
+# Upload by https://bit.ly/aryochannel
 
 import logging
 from huawei_lte_api.Client import Client

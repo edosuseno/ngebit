@@ -1,7 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env python3
 # Script by Yono Irenk (Kartolo)
-# Keluarga EDY
-# Youtube Aryo Brokolly (https://www.youtube.com/@aryobrokolly)
+# Upload by https://bit.ly/aryochannel
 
 DOR=/usr/bin
 

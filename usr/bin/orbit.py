@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# Script by Yono Irenk (Kartolo)
+# Youtube Aryo Brokolly
+
 import logging
 from huawei_lte_api.Client import Client
 from huawei_lte_api.Connection import Connection

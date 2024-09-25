@@ -31,13 +31,6 @@ MODES = {
 BANDS = {
     'all': LTEBandEnum.ALL,
     '1': LTEBandEnum.B1,
-    '3': LTEBandEnum.B3,
-    '7': LTEBandEnum.B7,
-    '8': LTEBandEnum.B8,
-    '20': LTEBandEnum.B20,
-    '28': LTEBandEnum.B28,
-    '38': LTEBandEnum.B38,
-    '40': LTEBandEnum.B40,
 }
 
 parser = ArgumentParser()

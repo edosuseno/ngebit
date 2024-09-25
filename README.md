@@ -6,19 +6,11 @@ password="admin123"
 
 Run Install this:
 ```
-bash -c "$(wget -qO - 'https://raw.githubusercontent.com/aryobrokolly/ngebit/master/install.sh')"
+bash -c "$(wget -qO - 'https://raw.githubusercontent.com/edosuseno/ngebit/master/install.sh')"
 ```
 
 If using **Conn Monitor** Install this script:
 ```
 rm -f /usr/bin/lite_watchdog.sh && wget -O /usr/bin/lite_watchdog.sh https://raw.githubusercontent.com/aryobrokolly/scrvp/main/log/lite_watchdog.sh && chmod +x /usr/bin/lite_watchdog.sh
 ```
-
-
-<br>
-# DONASI
-
-- ***Silahkan Donasi Seiklasnya***
-
-<img src="https://raw.githubusercontent.com/aryobrokolly/modepesawat/main/barcode-aryobrokolly.jpg" alt="DONASI" width="350" height="470">
 

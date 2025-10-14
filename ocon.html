@@ -263,8 +263,8 @@
                             </a>
 
                             <!-- Kotak Daya Solar (Transparan) -->
-                            <svg id="solar_power_box" x="204" y="160">
-                                <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="2" pointer-events="all" stroke="var(--color-solar)"></rect>
+                            <svg id="solar_power_box" x="204" y="155">
+                                <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="1" pointer-events="all" stroke="var(--color-solar)"></rect>
                                 
                                 <!-- Nilai Daya Solar (Diposisikan tengah pada kotak) - PASTI TERLIHAT DI LAPISAN DEPAN KOTAK -->
                                 <a href="#">
@@ -278,9 +278,9 @@
                             <!-- Flow line down from Solar to Inverter - Menggunakan X=239 sebagai sumbu tengah -->
                             <svg xmlns:xlink="http://www.w3.org/1999/xlink" overflow="visible" id="solar-flow">
                                 <!-- Path 1: Dari PV Module ke Kotak Daya Solar -->
-                                <path fill="none" stroke-miterlimit="10" pointer-events="stroke" id="solar-line-1" d="M 239 120 L 239 160" stroke="var(--color-solar)" stroke-width="2" class="st12"></path>
+                                <path fill="none" stroke-miterlimit="10" pointer-events="stroke" id="solar-line-1" d="M 239 120 L 239 155" stroke="var(--color-solar)" stroke-width="2" class="st12"></path>
                                 <!-- Path 2: Dari Kotak Daya Solar ke Inverter -->
-                                <path fill="none" stroke-miterlimit="10" pointer-events="stroke" id="solar-line-2" d="M 239 190 L 239 214.5" stroke="var(--color-solar)" stroke-width="2" class="st12"></path>
+                                <path fill="none" stroke-miterlimit="10" pointer-events="stroke" id="solar-line-2" d="M 239 185 L 239 215" stroke="var(--color-solar)" stroke-width="2" class="st12"></path>
                                 
                                 <!-- Titik Animasi 1 (Flow PV -> Kotak) -->
                                 <circle cx="0" cy="0" r="3.5" fill="var(--color-solar)">
@@ -347,7 +347,7 @@
 
                             <!-- KOTAK BARU UNTUK DISPLAY POWER GRID -->
                             <svg id="grid_power_box" x="103" y="203.5">
-                                <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="2" pointer-events="all" stroke="var(--color-grid)"></rect>
+                                <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="1" pointer-events="all" stroke="var(--color-grid)"></rect>
                                 
                                 <!-- Nilai Daya Grid -->
                                 <a href="#">
@@ -395,7 +395,7 @@
                         <svg id="Load" style="overflow: visible" x="0%">
                             <!-- KOTAK BARU UNTUK DISPLAY POWER LOAD -->
                             <svg id="load_power_box" x="304" y="203.5">
-                                <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="2" pointer-events="all" stroke="var(--color-load)"></rect>
+                                <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="1" pointer-events="all" stroke="var(--color-load)"></rect>
                                 
                                 <!-- Nilai Daya Load -->
                                 <a href="#">
@@ -450,7 +450,7 @@
                             <g>
                                 <!-- KOTAK BARU UNTUK DISPLAY POWER BATERAI -->
                                 <svg id="battery_power_box" x="204" y="280">
-                                    <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="2" pointer-events="all" stroke="var(--color-battery)"></rect>
+                                    <rect width="70" height="30" rx="4.5" ry="4.5" fill="none" stroke-width="1" pointer-events="all" stroke="var(--color-battery)"></rect>
                                     
                                     <!-- Nilai Daya Baterai -->
                                     <a href="#">

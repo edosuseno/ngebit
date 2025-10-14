@@ -151,6 +151,15 @@
         #solar_power_box rect, #grid_power_box rect, #load_power_box rect, #battery_power_box rect {
              fill: none; 
         }
+        /* CSS Animasi Baterai */
+        @keyframes battery-pulse {
+            0% { transform: scale(1.0); opacity: 1; }
+            50% { transform: scale(1.03); opacity: 0.85; }
+            100% { transform: scale(1.0); opacity: 1; }
+        }
+        .is-charging {
+            animation: battery-pulse 1.5s infinite;
+        }
 
         /* Styling Cell BMS */
         .voltages, .summary { 
@@ -263,7 +272,7 @@
                                 <!-- Titik Animasi 1 (Flow PV -> Kotak) -->
                                 <circle cx="0" cy="0" r="3.5" fill="var(--color-solar)">
                                     <animateMotion id="solar_flow_anim_1" repeatCount="indefinite" keyTimes="0;1" calcMode="linear" dur="2s" keyPoints="0;1">
-                                        <mpath href="#solar-line-1"></mpath>
+                                        <mpath href="#solar-line-1"></path>
                                     </animateMotion>
                                 </circle>
                                 <!-- Titik Animasi 2 (Flow Kotak -> Inverter) -->
@@ -345,7 +354,7 @@
                                 <!-- Titik Animasi 1 (Flow Icon <-> Kotak) -->
                                 <circle cx="0" cy="0" r="3.5" fill="var(--color-grid)">
                                     <animateMotion id="grid_flow_anim_1" repeatCount="indefinite" keyTimes="1;0" calcMode="linear" dur="2s">
-                                        <mpath href="#grid-line-1"></mpath>
+                                        <mpath href="#grid-line-1"></path>
                                     </animateMotion>
                                 </circle>
                                 <!-- Titik Animasi 2 (Flow Kotak <-> Inverter) -->
@@ -392,7 +401,7 @@
                                 <!-- Titik Animasi 1 (Flow Inverter -> Kotak) -->
                                 <circle cx="0" cy="0" id="es-dot-1" r="3.5" fill="var(--color-load)">
                                     <animateMotion id="load_flow_anim_1" repeatCount="indefinite" keyTimes="0;1" calcMode="linear" dur="2s" keyPoints="0;1">
-                                        <mpath href="#es-line-1"></mpath>
+                                        <mpath href="#es-line-1"></path>
                                     </animateMotion>
                                 </circle>
                                 <!-- Titik Animasi 2 (Flow Kotak -> Icon) -->
@@ -447,14 +456,14 @@
                                     <!-- Titik Animasi 1 (Flow Inverter <-> Kotak) -->
                                     <circle cx="0" cy="0" id="power-dot-discharge" r="3.5" fill="var(--color-battery)">
                                          <animateMotion id="bat_flow_anim_1" repeatCount="indefinite" keyTimes="1;0" calcMode="linear" dur="2s" keyPoints="1;0">
-                                            <mpath href="#bat-line"></mpath>
+                                            <mpath href="#bat-line"></path>
                                         </animateMotion>
                                     </circle>
                                     
                                     <!-- Titik Animasi 2 (Flow Kotak <-> Ikon) -->
                                     <circle cx="0" cy="0" id="power-dot-internal" r="3.5" fill="var(--color-battery)">
                                          <animateMotion id="bat_flow_anim_2" repeatCount="indefinite" keyTimes="1;0" calcMode="linear" dur="2s" keyPoints="1;0">
-                                            <mpath href="#bat-line-to-icon"></mpath>
+                                            <mpath href="#bat-line-to-icon"></path>
                                         </animateMotion>
                                     </circle>
 
@@ -758,15 +767,11 @@
                 }
             }
             setBalancing(balancing) {
-                if (this.balancing !== !!balancing) {
-                    if (balancing) {
-                        this.outline.animate(480, 480, 'now').attr({
-                            fill: '#806ef1'
-                        }).loop(true, true);
-                    } else {
-                        this.outline.timeline().stop();
-                        this.outline.attr({ fill: '#444444' });
-                    }
+                // Sederhanakan agar tidak crash (Hanya ubah warna statis)
+                if (balancing) {
+                    this.outline.attr({ fill: '#806ef1' }); // Warna ungu saat balancing
+                } else {
+                    this.outline.attr({ fill: '#444444' }); // Warna default dark mode
                 }
                 this.balancing = !!balancing;
             }
@@ -884,8 +889,16 @@
 
         function updateBatteryLevel(soc) {
             const batteryInner = document.getElementById('bat_inner');
-            if (!batteryInner) return;
+            const batteryIcon = document.getElementById('battery_icon');
+            if (!batteryInner || !batteryIcon) return;
             
+            // Kontrol Animasi Pulse Baterai
+            if (latestDiagramData.batteryPower < 0 && Math.abs(latestDiagramData.batteryPower) > 10) {
+                batteryIcon.classList.add('is-charging');
+            } else {
+                batteryIcon.classList.remove('is-charging');
+            }
+
             batteryInner.querySelectorAll('rect').forEach(rect => rect.remove());
 
             const totalBars = 8;
@@ -895,7 +908,6 @@
             const startX = 5;
             let currentY = 20;
 
-            // Jika SOC belum terisi, tampilkan bar default (misal 1 bar merah)
             if (soc === 0) {
                 const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                 rect.setAttribute('x', startX);
@@ -997,17 +1009,24 @@
                 latestDiagramData.inverterCurrent = data.current !== undefined ? `${data.current.toFixed(2)} A` : DEFAULT_DISPLAY;
                 latestDiagramData.loadFrequency = data.freq !== undefined ? `${data.freq.toFixed(2)} Hz` : DEFAULT_DISPLAY;
 
-                // 2. MAPPING POWER METER KE GRID POWER
-                // Konvensi: Positif (exportPower) = Jual ke Grid; Negatif = Beli dari Grid
-                // Gunakan activePower untuk daya saat ini.
+                // 2. MAPPING POWER METER KE GRID POWER DAN LOAD POWER
                 if (data.activePower !== undefined) {
-                    // Kita asumsikan activePower adalah daya yang ditarik/dikeluarkan dari GRID
-                    // Jika nilainya positif, asumsikan ini adalah DAYA YANG DIPAKAI OLEH LOAD
-                    // Jika nilainya negatif, asumsikan ini adalah DAYA YANG DIJUAL KE GRID
-                    
-                    // Untuk diagram Grid Power, kita menggunakan nilai activePower
+                    // Grid Power: Menggunakan activePower. Positif/Negatif akan menentukan arah aliran
+                    // Konvensi: Positif = Jual ke Grid (Sell), Negatif = Beli dari Grid (Buy)
                     latestDiagramData.gridPower = data.activePower; 
-                    latestDiagramData.loadPower = data.activePower; // Untuk saat ini, asumsikan activePower = loadPower (perlu dikalibrasi)
+                }
+
+                if (data.loadPower !== undefined) {
+                    // Jika ada loadPower eksplisit dari meter, gunakan ini. Jika tidak, asumsikan activePower (jika meter hanya mengukur satu titik)
+                    latestDiagramData.loadPower = data.loadPower; 
+                } else if (data.activePower !== undefined) {
+                    // JIKA TIDAK ADA LOAD POWER EKSPLISIT: Kita asumsikan activePower adalah net power di titik meter.
+                    // Untuk diagram, kita harus MENGHITUNG BEBAN (loadPower) berdasarkan keseimbangan energi:
+                    // Load = Solar + Bat - Grid (Hanya perkiraan jika tidak ada sensor load terpisah)
+                    // Untuk saat ini, kita gunakan Grid Power sebagai Load jika tidak ada data terpisah, karena ini adalah data meter AC
+                    // TODO: Perlu kalibrasi topologi yang sebenarnya di sini. Kita set load sama dengan grid power saja untuk memastikan animasi load berjalan.
+                    // latestDiagramData.loadPower = Math.abs(data.activePower); 
+                    // Kita biarkan logika Load mengikuti logika MPPT jika ada (atau set manual ke 100 W jika kosong)
                 }
 
                 updateDiagram(latestDiagramData);
@@ -1041,8 +1060,7 @@
                 if (keyLower.includes('pv_power') || keyLower.includes('pvpower') || keyLower.includes('solar_power')) {
                     latestDiagramData.solarPower = pValue;
                     shouldUpdateDiagram = true;
-                } else if (keyLower.includes('load_power') || keyLower.includes('loadpower')) {
-                    // Jika data load datang dari sini, gunakan (tapi biasanya dari AC Meter)
+                } else if (keyLower.includes('load_power') || keyLower.includes('loadpower') || keyLower.includes('ess_power')) {
                     latestDiagramData.loadPower = pValue; 
                     shouldUpdateDiagram = true;
                 } else if (keyLower.includes('battery_power') || keyLower.includes('batpower')) {

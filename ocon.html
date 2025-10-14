@@ -37,7 +37,7 @@
             background: #242424; /* Background agak gelap */
             padding: 20px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
+            border-radius: 12px; /* Lebih rounded */
             border: 1px solid #333;
         }
 
@@ -47,66 +47,92 @@
             font-weight: 700;
         }
         
+        /* MPPT DATA CONTAINER - Diubah ke Grid Modern */
         #data-container {
-            margin-top: 10px;
-            padding: 5px;
-            background-color: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 5px;
+            margin-top: 15px;
+            padding: 0;
+            background-color: transparent; /* Transparan */
+            border: none;
+            border-radius: 0;
             /* Grid layout untuk item data */
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 5px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Kolom lebih lebar */
+            gap: 12px; /* Jarak antar kartu */
         }
 
+        /* MPPT Data Item - Dibuat menjadi Card */
         .data-item {
-            padding: 5px;
+            padding: 15px;
             background-color: #2c2c2c; /* Warna latar belakang standar */
-            border: 1px solid #444; /* Border standar */
-            border-radius: 5px;
+            border: 1px solid #3e3e3e; /* Border sedikit lebih terang */
+            border-radius: 8px;
             text-align: center;
             overflow: hidden; 
-            min-height: 50px; 
+            min-height: 80px; 
             display: flex;
             flex-direction: column;
             justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .data-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
         }
 
         .data-item strong {
             display: block;
-            margin-bottom: 2px;
-            font-size: 0.85em;
-            color: #E0E0E0;
+            margin-bottom: 4px; /* Jarak antara label dan nilai */
+            font-size: 0.9em;
+            color: #B0B0B0; /* Abu-abu muda untuk label */
+            font-weight: 500;
         }
 
         .data-item .payload {
-            font-size: 1.1em;
-            color: #66BB6A; /* Hijau */
-            font-weight: bold;
+            font-size: 1.5em; /* Nilai lebih besar */
+            color: #66BB6A; /* Hijau - Nilai tetap cerah */
+            font-weight: 700; /* Lebih tebal */
         }
 
         /* KHUSUS UNTUK STATUS: Gunakan warna yang berbeda agar menonjol sebagai indikator status */
+        .data-item.status-item {
+             background-color: #383838; /* Lebih gelap */
+             border-color: #555;
+        }
         .data-item.status-item .payload {
             color: #FFC107; /* Kuning Solar untuk Status/Indicator */
-            font-size: 0.9em;
-            font-weight: bold;
+            font-size: 1em; /* Ukuran normal untuk nilai status panjang */
+            font-weight: 600;
         }
 
+        /* BMS Summary - Diubah menjadi Grid Card */
         .summary {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #2c2c2c;
-            border-radius: 5px;
-            text-align: center;
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #1a1a1a; /* Background Summary gelap */
+            border: 1px solid #3e3e3e;
+            border-radius: 8px;
+            text-align: left; /* Teks rata kiri */
             color: #E0E0E0;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
         }
-        .summary span {
+        .summary .summary-item {
+             padding: 5px;
+             border-left: 3px solid #4FC3F7; /* Indikator biru elegan */
+             padding-left: 10px;
+             background-color: #2c2c2c;
+             border-radius: 4px;
+        }
+        .summary .summary-item strong {
             display: block;
-            font-size: 1em;
-            margin: 5px 0;
+            font-size: 0.8em;
+            color: #B0B0B0;
         }
-        .summary b {
+        .summary .summary-item b {
+            display: block;
             color: #FFC107; /* Kuning Solar */
+            font-size: 1.2em;
         }
 
 
@@ -138,14 +164,17 @@
         
         :root {
             --color-solar: #FFC107;      /* Orange Emas Cerah untuk Solar */
-            --color-battery: #FF5252;    /* MERAH CERAH untuk Baterai */
+            --color-battery: #FF5252;    /* MERAH CERAH untuk Baterai (Outline) */
             --color-grid: #4FC3F7;       /* Biru Langit/Light Blue */
             --color-load: #66BB6A;       /* Hijau Cerah/Light Green */
             --color-inverter: #BBBBBB;   /* Abu-abu terang untuk Inverter */
-            --color-battery-low: #FFB74D; /* Kuning/Oranye untuk SOC rendah */
-            --color-bar-green: #4CAF50; /* Hijau cerah untuk bar penuh */
-            --color-bar-red: #E57373; /* Merah cerah untuk bar kosong */
+            --color-battery-low: #FFB74D; /* Kuning/Oranye untuk SOC rendah (Default) */
+            --color-bar-green: #4CAF50; /* Hijau cerah (>= 75%) */
+            --color-bar-green-light: #C6FF00; /* Hijau Stabilo (>= 50%) */
+            --color-bar-yellow: #FFC107; /* Kuning (>= 30%) */
+            --color-bar-red: #E57373; /* Merah ( < 30% / Kosong ) */
             --color-bar-empty: #444444; /* Abu-abu gelap untuk bar yang tidak terisi (NETRAL) */
+            --color-flow-highlight: #CC4400; /* Orange tua/merah pekat untuk highlight animasi */
         }
         #Solar [fill="grey"], #Solar [stroke="grey"], #Solar text, #Solar path[fill="#FFFFFF"] { 
             fill: var(--color-solar) !important; 
@@ -165,27 +194,15 @@
              fill: none; 
         }
         
-        /* CSS Animasi Baterai BARU (HA Style) */
-        @keyframes battery-charge-glow {
-            /* MENGGUNAKAN WARNA DEFAULT BATERAI (MERAH) UNTUK GLOW SAAT CHARGING */
-            0%, 100% { filter: drop-shadow(0 0 1px var(--color-battery)); } 
-            50% { filter: drop-shadow(0 0 5px var(--color-battery)); }
+        /* MENGHAPUS CSS ANIMASI GLOW LAMA */
+        #battery_icon.charging, #battery_icon.discharging, #battery_icon.low-soc {
+            animation: none !important;
+            filter: none !important;
         }
-        @keyframes battery-discharge-glow {
-            0%, 100% { filter: drop-shadow(0 0 1px var(--color-battery)); }
-            50% { filter: drop-shadow(0 0 5px var(--color-battery)); }
-        }
-        
-        #battery_icon.charging {
-            animation: battery-charge-glow 2s infinite ease-in-out;
-        }
-        #battery_icon.discharging {
-            animation: battery-discharge-glow 2s infinite ease-in-out;
-        }
-        #battery_icon.low-soc {
-             /* Tidak perlu animasi glow saat low, cukup warna merah/orange */
-             filter: drop-shadow(0 0 1px var(--color-bar-red));
-        }
+
+        /* MENGHAPUS ANIMASI GRADIENT CSS LAMA */
+        /* @keyframes gradient-move { ... } */
+
 
         /* Styling Cell BMS */
         .voltages, .summary { 
@@ -253,6 +270,11 @@
                 <div class="svg-container">
                     <!-- SVG ViewBox menggunakan -2 0 490 430. Garis vertikal tengah: X=239. Garis horizontal tengah: Y=218.5 -->
                     <svg preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="-2 0 490 430" class="svg-content">
+                        
+                        <!-- Definisikan Gradien SVG -->
+                        <defs>
+                            <!-- Gradien dinamis akan dibuat di JavaScript -->
+                        </defs>
                         
                         <!-- Solar Elements -->
                         <svg id="Solar" style="overflow: visible; display: inline;" x="0%" y="-6%">
@@ -511,10 +533,12 @@
                                     <a href="#">
                                         <svg id="bat_outter" y="338.5" width="78.75" height="78.75" preserveAspectRatio="none" viewBox="0 0 24 24" x="213.0">
                                             <defs>
-                                                <!-- Gradien lama dihapus karena kita pakai warna solid dan animasi glow di CSS -->
+                                                <!-- Gradien dinamis untuk animasi pengisian/pengosongan -->
+                                                <!-- Catatan: Gradien dinamis akan dibuat dan dihapus di JavaScript -->
                                             </defs>
                                             <path fill="var(--color-battery)" d="M12 20H4V6h8L12 20m.67-16H11V2H5v2H3.33C2.6 4 2 4.6 2 5.33v15.34C2 21.4 2.6 22 3.33 22h9.34c.74 0 1.33-.59 1.33-1.33V5.33C14 4.6 13.4 4 12.67 4"></path>
                                         </svg>
+                                        <!-- BAT_INNER akan menampung klip mask dan bar level -->
                                         <svg id="bat_inner" y="342" width="78.75" height="68.75" preserveAspectRatio="none" viewBox="0 0 24 24" x="211.0">
                                             <!-- Bar level akan diisi ulang oleh JS -->
                                         </svg>
@@ -688,41 +712,6 @@
             createCheckboxes();
         }
 
-        function createChart(labels, datasets) {
-            const ctx = document.getElementById('lineChart').getContext('2d');
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            ticks: { color: '#E0E0E0' }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            ticks: { color: '#E0E0E0' }
-                        }
-                    },
-                    elements: {
-                        line: { tension: 0.4 },
-                        point: { radius: 0 }
-                    }
-                }
-            });
-        }
-
         function createCheckboxes() {
             const container = document.getElementById('checkboxContainer');
             container.innerHTML = '';
@@ -839,7 +828,6 @@
         
         const DEFAULT_DISPLAY = 0.0;
         const DEFAULT_DISPLAY_STR = '--';
-        // const STORAGE_KEY_TOTAL_SOLAR = 'plts_total_solar_mwh'; // DIHAPUS
 
         // Helper untuk parsing angka yang aman
         function tryParseFloat(value) {
@@ -1065,7 +1053,9 @@
         function updateBatteryLevel(soc, batPower) {
             const batteryInner = document.getElementById('bat_inner');
             const batteryIcon = document.getElementById('battery_icon');
-            if (!batteryInner || !batteryIcon) return;
+            const svgDefs = document.querySelector('.svg-content defs');
+
+            if (!batteryInner || !batteryIcon || !svgDefs) return;
             
             batteryInner.querySelectorAll('rect').forEach(rect => rect.remove());
 
@@ -1074,66 +1064,95 @@
             const barWidth = 7;
             const barHeight = 1.5;
             const startX = 5;
-            
-            // TITIK AWAL VISUAL BAR: Y kecil berarti Paling Atas di layar SVG.
             const startYVisual = 6; 
             
             soc = parseInt(soc);
             if (isNaN(soc) || soc < 0) soc = 0;
             if (soc > 100) soc = 100;
 
-            // --- 1. Tentukan Warna dan Status Global ---
-            let overallColor;
-            batteryIcon.classList.remove('charging', 'discharging', 'low-soc');
-
-            if (soc < 30) {
-                overallColor = 'var(--color-bar-red)'; // Merah
-                batteryIcon.classList.add('low-soc');
-            } else if (soc <= 70) {
-                overallColor = 'var(--color-battery-low)'; // Kuning/Oranye
-            } else {
-                overallColor = 'var(--color-bar-green)'; // Hijau
-            }
+            // --- 1. Tentukan Warna Utama berdasarkan Range SOC ---
+            let overallColorStop; // Warna solid untuk stop gradient
             
-            // Warna untuk bilah yang kosong (background)
-            const emptyColor = (soc < 30) ? 'var(--color-bar-red)' : 'var(--color-bar-empty)';
-
-            // --- 2. Kontrol Animasi Glow (HA Style) ---
-            if (batPower < -10) { // Charging (Negatif)
-                 batteryIcon.classList.add('charging');
-            } else if (batPower > 10) { // Discharging (Positif)
-                 batteryIcon.classList.add('discharging');
+            if (soc >= 75) {
+                overallColorStop = 'var(--color-bar-green)'; // Hijau Penuh
+            } else if (soc >= 50) {
+                overallColorStop = 'var(--color-bar-green-light)'; // Hijau Stabilo
+            } else if (soc >= 30) {
+                overallColorStop = 'var(--color-bar-yellow)'; // Kuning
+            } else {
+                overallColorStop = 'var(--color-bar-red)'; // Merah
             }
 
+            // Warna untuk bar yang tidak terisi: abu-abu gelap
+            const emptyColor = 'var(--color-bar-empty)'; 
+
+            // --- 2. Buat dan Animasikan Gradien Merah (Flow Overlay) ---
+            
+            // Hapus gradien lama jika ada
+            svgDefs.innerHTML = '';
+            
+            // ID gradien agar unik
+            const gradientId = `socFlowGradient`; 
+            const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+            gradient.setAttribute('id', gradientId);
+            gradient.setAttribute('x1', '0%');
+            gradient.setAttribute('y1', '0%'); 
+            gradient.setAttribute('x2', '0%');
+            gradient.setAttribute('y2', '20%'); // Ulangi setiap 20%
+            gradient.setAttribute('spreadMethod', 'repeat');
+            gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+
+            // Stop 1: Warna Dasar SOC
+            let stop1 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            stop1.setAttribute('offset', '0%');
+            stop1.setAttribute('stop-color', overallColorStop); 
+            stop1.setAttribute('stop-opacity', '1.0');
+            
+            // Stop 2: Warna Highlight Flow (Merah/Oranye) - Lebih tebal dan pekat
+            let stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            stop2.setAttribute('offset', '20%');
+            stop2.setAttribute('stop-color', 'var(--color-flow-highlight)'); // Merah/Oranye Pekat
+            stop2.setAttribute('stop-opacity', '1.0'); 
+
+            // Stop 3: Transition kembali ke Base Color
+            let stop3 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            stop3.setAttribute('offset', '40%');
+            stop3.setAttribute('stop-color', overallColorStop);
+            stop3.setAttribute('stop-opacity', '1.0'); 
+            
+            // Stop 4: Warna Dasar (sisanya)
+            let stop4 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            stop4.setAttribute('offset', '100%');
+            stop4.setAttribute('stop-color', overallColorStop);
+            stop4.setAttribute('stop-opacity', '1.0');
+
+            gradient.appendChild(stop1);
+            gradient.appendChild(stop2);
+            gradient.appendChild(stop3);
+            gradient.appendChild(stop4);
+
+            // Animasi pergerakan gradient (simulasi cairan naik)
+            let animMotion = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
+            animMotion.setAttribute('attributeName', 'gradientTransform');
+            animMotion.setAttribute('type', 'translate');
+            animMotion.setAttribute('from', '0 0');
+            animMotion.setAttribute('to', '0 20'); // Pindahkan 20 unit ke bawah (visual naik, karena y1=0%, y2=20%)
+            animMotion.setAttribute('dur', '2.0s'); // DIPERLAMBAT MENJADI 2.0S
+            animMotion.setAttribute('repeatCount', 'indefinite');
+            
+            gradient.appendChild(animMotion);
+            svgDefs.appendChild(gradient);
+            
+            const fillUrl = `url(#${gradientId})`;
 
             // --- 3. Render Bar Level ---
             
-            // Bar untuk 0% (hanya 1 bar kecil)
-            if (soc === 0) {
-                const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-                rect.setAttribute('x', startX);
-                rect.setAttribute('y', startYVisual);
-                rect.setAttribute('width', barWidth);
-                rect.setAttribute('height', barHeight);
-                rect.setAttribute('rx', 0.5);
-                rect.setAttribute('ry', 0.5);
-                rect.setAttribute('fill', overallColor);
-                batteryInner.appendChild(rect);
-                return; 
-            }
-
             for (let i = 0; i < totalBars; i++) {
-                // i=0 merepresentasikan SOC tertinggi (87.5%-100%) dan harus menjadi bar paling atas (yPosition terkecil)
-                // i=7 merepresentasikan SOC terendah (0%-12.5%) dan harus menjadi bar paling bawah (yPosition terbesar)
-                
-                // Batas bawah SOC yang dibutuhkan agar bar ini terisi
                 const minSocToFillBar = (totalBars - i) * socPerBar; 
-
-                // Cek apakah bar ini harus terisi
                 const isFilled = soc > (minSocToFillBar - socPerBar);
                 
-                // Tentukan warna akhir
-                const finalBarColor = isFilled ? overallColor : emptyColor;
+                // Jika bar terisi, gunakan fill gradient yang sudah dianimasikan
+                const finalBarFill = isFilled ? fillUrl : emptyColor;
 
                 // Perhitungan Posisi Y: Y meningkat seiring i meningkat (Top-Down drawing)
                 const yPosition = startYVisual + (i * (barHeight + 0.5));
@@ -1146,7 +1165,8 @@
                 rect.setAttribute('rx', 0.5);
                 rect.setAttribute('ry', 0.5);
                 
-                rect.setAttribute('fill', finalBarColor); 
+                // Terapkan fill
+                rect.setAttribute('fill', finalBarFill); 
                 
                 batteryInner.appendChild(rect);
             }
@@ -1182,6 +1202,38 @@
             if (oldStatusItem) oldStatusItem.remove();
         }
 
+        // Mapping nama parameter teknis ke bahasa awam/standar
+        const MPPT_NAME_MAPPING = {
+            // Contoh mapping umum berdasarkan topik/key yang mungkin muncul:
+            'sunsynk_grid_power': 'GRID POWER (W)',
+            'sunsynk_grid_ct_power': 'GRID CT POWER (W)',
+            'sunsynk_day_grid_import': 'GRID IMPORT (kWh)',
+            'sunsynk_day_grid_export': 'GRID EXPORT (kWh)',
+            'mppt_energy_today': 'PV ENERGY TODAY (kWh)',
+            'energy_harian_out': 'LOAD ENERGY TODAY (kWh)',
+            'mppt_power': 'PV POWER (W)',
+            'mppt_voltage_pv': 'PV VOLTAGE (V)',
+            'mppt_current': 'PV CURRENT (A)',
+            'sunsynk_overall_state': 'INVERTER STATE',
+            'day_battery_charge_70': 'DAILY BATT CHARGE (kWh)',
+            'day_battery_discharge_71': 'DAILY BATT DISCHARGE (kWh)',
+            
+            // Nama parameter lain yang mungkin muncul dari topic 3469224/#
+            'volt': 'AC VOLTAGE (V)',
+            'current': 'AC CURRENT (A)',
+            'freq': 'AC FREQUENCY (Hz)',
+            'activePower': 'AC ACTIVE POWER (W)',
+            'power_meter': 'POWER METER (W)',
+            // Tambahkan parameter lain sesuai kebutuhan dari perangkat Anda:
+            'PV1_I': 'PV1 CURRENT (A)',
+            'PV2_V': 'PV2 VOLTAGE (V)',
+            'E_LOAD_DAY': 'LOAD ENERGY DAY (kWh)',
+            'E_PV_TOTAL': 'PV ENERGY TOTAL (MWh)',
+            'LOAD_A': 'LOAD AMPERE (A)',
+            'GEN_STATE': 'GENERATOR STATUS',
+            'TEMP': 'TEMPERATURE (°C)',
+        };
+
         // FUNGSI BARU UNTUK MENGAMBIL DATA POWER METER DARI fatkhur/pwrMeter
         function updatePowerMeterData(payload) {
             try {
@@ -1212,68 +1264,56 @@
         // FUNGSI UNTUK MENGAMBIL DATA MPPT (Topics yang sama di kedua file)
         function updateData(topic, payload) {
             const container = document.getElementById('data-container');
-            let dataKey = topic.substring(topic.lastIndexOf('/') + 1); 
-            const keyLower = dataKey.toLowerCase();
+            
+            // Ambil hanya bagian akhir topic, misalnya 'mppt_power' dari '3469224/amsanmppt/mppt_power'
+            let rawDataKey = topic.substring(topic.lastIndexOf('/') + 1); 
+            const keyLower = rawDataKey.toLowerCase();
+            
+            // Tentukan Display Key menggunakan mapping, jika tidak ada, gunakan rawDataKey
+            let displayKey = MPPT_NAME_MAPPING[rawDataKey] || rawDataKey.toUpperCase();
+            
             let pValue = tryParseFloat(payload);
             let shouldRecalculate = false;
 
-            // --- MAPPING KHUSUS DARI YAML (SENSOR-SENSOR SPESIFIK) ---
+            // --- MAPPING DATA UNTUK DIAGRAM ---
             
-            // Grid Power (grid_power_169: sensor.sunsynk_grid_power atau grid_ct_power_172)
             if (topic.includes('sunsynk_grid_power') || topic.includes('sunsynk_grid_ct_power')) {
-                 // Asumsi: Sensor Grid Power (CT) memberikan nilai Positif=Import (Buy), Negatif=Export (Sell)
-                 // Nilai mentah ini akan digunakan sebagai prioritas di calculateAndRenderDiagram
                 latestDiagramData.rawGridPower = pValue;
                 shouldRecalculate = true;
             }
-
-            // Daily Energy
-            // Grid Import (day_grid_import_76: sensor.sunsynk_day_grid_import)
             if (topic.includes('sunsynk_day_grid_import')) {
                 latestDiagramData.dailyGridBuy = pValue.toFixed(2);
             }
-            // Grid Export (day_grid_export_77: sensor.sunsynk_day_grid_export)
             if (topic.includes('sunsynk_day_grid_export')) {
                 latestDiagramData.dailyGridSell = pValue.toFixed(2);
             }
-            // Solar Energy (day_pv_energy_108: sensor.mppt_energy_today)
             if (topic.includes('mppt_energy_today')) {
                 latestDiagramData.dailySolar = pValue.toFixed(2);
             }
-            // Load Energy (day_load_energy_84: sensor.energy_harian_out)
             if (topic.includes('energy_harian_out')) {
                  latestDiagramData.dailyLoad = pValue.toFixed(2);
             }
-            // Bat Charge (day_battery_charge_70: sensor.mppt_energy_today) - sama dengan dailySolar
-            // Bat Discharge (day_battery_discharge_71: sensor.energy_harian_out) - sama dengan dailyLoad
-            if (topic.includes('day_battery_charge_70')) { // Contoh mapping ke topic yang spesifik
+            if (topic.includes('day_battery_charge_70')) {
                 latestDiagramData.dailyBatCharge = pValue.toFixed(2);
             }
-            if (topic.includes('day_battery_discharge_71')) { // Contoh mapping ke topic yang spesifik
+            if (topic.includes('day_battery_discharge_71')) {
                 latestDiagramData.dailyBatDischarge = pValue.toFixed(2);
             }
-            
-            // Power PV1 (pv1_power_186: sensor.mppt_power)
             if (topic.includes('mppt_power')) {
                 latestDiagramData.solarPower = parseFloat(pValue.toFixed(1)); 
                 shouldRecalculate = true;
             }
-            // PV1 Voltage/Current (pv1_voltage_109/pv1_current_110)
             if (topic.includes('mppt_voltage_pv')) {
-                // Di sini kita asumsikan sensor.mppt_voltage_pv adalah voltage PV1
                 latestDiagramData.pvVoltage = `${pValue.toFixed(1)} V`;
             }
             if (topic.includes('mppt_current')) {
-                 // Di sini kita asumsikan sensor.mppt_current adalah current PV1
                 latestDiagramData.pvCurrent = `${pValue.toFixed(1)} A`;
             }
-            
-            // Status (inverter_status_59: sensor.sunsynk_overall_state)
             if (topic.includes('sunsynk_overall_state')) {
                 latestDiagramData.inverterStatus = payload;
             }
             
-            // --- PERUBAHAN STATUS ---
+            // --- PERUBAHAN STATUS (Menggunakan rawDataKey untuk penentuan, displayKey untuk label) ---
             if (keyLower === 'status' || keyLower === 'sunsynk_overall_state') {
                 const statuses = payload.split(';').filter(s => s.trim() !== '');
                 
@@ -1290,7 +1330,10 @@
                     dataItem.className = 'data-item status-item'; 
                     dataItem.id = id;
                     
-                    dataItem.innerHTML = `<strong>${statusKey}</strong><div class="payload">${statusValue}</div>`;
+                    // Gunakan label bahasa awam di sini jika status adalah kunci yang dikenal
+                    const statusDisplayKey = MPPT_NAME_MAPPING[statusKey] || statusKey; 
+                    
+                    dataItem.innerHTML = `<strong>${statusDisplayKey}</strong><div class="payload">${statusValue}</div>`;
                     container.appendChild(dataItem);
                 });
                 return; 
@@ -1302,16 +1345,15 @@
             if (!dataItem) {
                 dataItem = document.createElement('div');
                 dataItem.className = 'data-item';
-                dataItem.id = topic;
+                // Gunakan topic string penuh sebagai ID untuk memastikan keunikan
+                dataItem.id = topic; 
                 container.appendChild(dataItem);
             }
 
             let displayPayload = payload;
             
             if (pValue !== DEFAULT_DISPLAY) {
-                let pValueFixed1 = pValue.toFixed(1);
-                
-                // Gunakan payload asli jika bukan power/voltage/current atau payload sangat besar/kecil
+                // Formatting payload value
                 if (payload.length > 5 || pValue === 0) {
                      displayPayload = pValue.toFixed(2);
                 } else {
@@ -1319,7 +1361,8 @@
                 }
             }
             
-            dataItem.innerHTML = `<strong>${dataKey.toUpperCase()}</strong><div class="payload">${displayPayload}</div>`;
+            // Gunakan displayKey (nama awam) sebagai label display
+            dataItem.innerHTML = `<strong>${displayKey}</strong><div class="payload">${displayPayload}</div>`;
 
             if (shouldRecalculate) {
                  calculateAndRenderDiagram();
@@ -1395,7 +1438,7 @@
                shouldUpdateSummary = true;
             }
             
-            // === Membangun Summary Text ===
+            // === Membangun Summary Text (Menggunakan struktur grid baru) ===
             if(shouldUpdateSummary) {
                 const v = vpack !== undefined ? (vpack/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
                 const i = current !== undefined ? (current/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
@@ -1405,12 +1448,19 @@
                 const soc = RSOC !== undefined ? RSOC : DEFAULT_DISPLAY_STR;
                 const cyc = cycles !== undefined ? cycles : DEFAULT_DISPLAY_STR;
                 const vD = Vdiff !== undefined ? Vdiff : DEFAULT_DISPLAY_STR;
+                
+                // Content dalam format baru
+                const summaryHtml = `
+                    <div class="summary-item"><strong>PACK VOLTAGE</strong><b>${v} V</b></div>
+                    <div class="summary-item"><strong>CURRENT</strong><b>${i} A</b></div>
+                    <div class="summary-item"><strong>POWER</strong><b>${p} W</b></div>
+                    <div class="summary-item"><strong>SOC</strong><b>${soc} %</b></div>
+                    <div class="summary-item"><strong>CAPACITY</strong><b>${remC} / ${nomC} Ah</b></div>
+                    <div class="summary-item"><strong>CYCLES</strong><b>${cyc} x</b></div>
+                    <div class="summary-item"><strong>CELL DIFF</strong><b>${vD} mV</b></div>
+                `;
 
-                $('.summary').html(` 
-                  <span> Voltage: <b>${v}</b>V, Current: <b>${i}</b>A, Power: <b>${p}</b>W</span>
-                  <span> Capacity: <b>${remC}</b> / <b>${nomC}</b> Ah ( <b>${soc}%</b> )</span>
-                  <span> Cycles: <b>${cyc}</b>x, Cell Diff: <b>${vD}</b>mV</span>
-                `);
+                $('.summary').html(summaryHtml);
             }
             
             if (shouldRecalculate) {

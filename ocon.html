@@ -163,15 +163,15 @@
         #solar_power_box rect, #grid_power_box rect, #load_power_box rect, #battery_power_box rect {
              fill: none; 
         }
-        /* CSS Animasi Baterai */
-        @keyframes battery-pulse {
+        /* CSS Animasi Baterai - DIHAPUS agar ikon diam */
+        /* @keyframes battery-pulse {
             0% { transform: scale(1.0); opacity: 1; }
             50% { transform: scale(1.03); opacity: 0.85; }
             100% { transform: scale(1.0); opacity: 1; }
         }
         .is-charging {
             animation: battery-pulse 1.5s infinite;
-        }
+        } */
 
         /* Styling Cell BMS */
         .voltages, .summary { 
@@ -815,16 +815,21 @@
 
         // Data yang dipetakan dari MQTT untuk Diagram
         let latestDiagramData = {
-            solarPower: DEFAULT_DISPLAY, // Dari MPPT.power (W)
-            loadPower: DEFAULT_DISPLAY, // Dari PowerMeter.activePower (absolut, W)
-            batteryPower: DEFAULT_DISPLAY, // Dari BMS.power (Positif = Discharge, Negatif = Charge, W)
-            gridPower: DEFAULT_DISPLAY, // CALCULATED: Load - Solar - Battery (Positif = Buy/Import, Negatif = Sell/Export, W)
+            // Power (W)
+            solarPower: DEFAULT_DISPLAY, 
+            loadPower: DEFAULT_DISPLAY, 
+            batteryPower: DEFAULT_DISPLAY, 
+            gridPower: DEFAULT_DISPLAY, 
             
+            // Daily Energy (kWh)
             dailySolar: DEFAULT_DISPLAY_STR,
             dailyLoad: DEFAULT_DISPLAY_STR,
             dailyGridBuy: DEFAULT_DISPLAY_STR,
+            dailyGridSell: DEFAULT_DISPLAY_STR, // BARU: Untuk Grid Export/Sell
             dailyBatCharge: DEFAULT_DISPLAY_STR,
             dailyBatDischarge: DEFAULT_DISPLAY_STR,
+
+            // Status & Detail
             batterySOC: 0,
             batteryRemainingEnergy: DEFAULT_DISPLAY_STR,
             inverterVoltage: DEFAULT_DISPLAY_STR + ' V',
@@ -832,9 +837,11 @@
             loadFrequency: DEFAULT_DISPLAY_STR + ' Hz',
             pvVoltage: DEFAULT_DISPLAY_STR + ' V',
             pvCurrent: DEFAULT_DISPLAY_STR + ' A',
-            runtime: DEFAULT_DISPLAY_STR
+            runtime: DEFAULT_DISPLAY_STR,
+            inverterStatus: DEFAULT_DISPLAY_STR
         };
 
+        // Fungsi yang sama
         function getFlowDuration(power) {
             const minDuration = 0.5;
             const maxDuration = 10;
@@ -847,6 +854,7 @@
             return `${duration.toFixed(1)}s`;
         }
 
+        // Fungsi yang sama
         function controlFlow(animIds, powerValue, absPower, forwardKeyPoints, reverseKeyPoints) {
             const flowSpeed = getFlowDuration(absPower);
             const isFlowing = absPower > 10; // Threshold 10W untuk start flow
@@ -917,16 +925,45 @@
 
             // 4. Grid Flow (HANYA AKTIF JIKA BUY/IMPORT)
             const gridFlowValue = latestDiagramData.gridPower; // Positif = Buy
+            const gridSellValue = latestDiagramData.gridPower; // Negatif = Sell
             const gridAbsPower = Math.abs(gridFlowValue);
-            
+
+            // Tampilkan Power Grid di kotak
+            const gridPowerBox = document.getElementById('grid_power_box').querySelector('rect');
+
             if (gridFlowValue > 10) { // Buy/Import (Grid -> Inverter: 1;0)
                 // Grid flow path 0;1 is LEFT-to-RIGHT (Sell). To go RIGHT-to-LEFT (Buy), we use reverse: "1;0"
                 controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], -1, gridAbsPower, "1;0", "0;1");
-                document.getElementById('grid_power_box').querySelector('rect').setAttribute('stroke', 'var(--color-grid)'); // Biru (Input)
-            } else { 
-                // Jika Sell/Export (< -10) ATAU No Flow (approx 0), set flow ke nol
+                document.getElementById('grid_total_power').textContent = `${gridFlowValue.toFixed(1)} W`;
+                gridPowerBox.setAttribute('stroke', 'var(--color-grid)'); // Biru (Input)
+            } else if (gridSellValue < -10) { // Sell/Export (Inverter -> Grid: 0;1)
+                 // Grid flow path 0;1 is LEFT-to-RIGHT (Sell). To go LEFT-to-RIGHT (Sell), we use forward: "0;1"
+                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 1, gridAbsPower, "0;1", "1;0");
+                document.getElementById('grid_total_power').textContent = `${Math.abs(gridSellValue).toFixed(1)} W`;
+                gridPowerBox.setAttribute('stroke', 'var(--color-load)'); // Hijau (Output)
+            } else {
+                // No Flow (approx 0)
                 controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 0, 0, "1;0", "0;1"); 
-                document.getElementById('grid_power_box').querySelector('rect').setAttribute('stroke', 'var(--color-grid)');
+                document.getElementById('grid_total_power').textContent = `${DEFAULT_DISPLAY.toFixed(1)} W`;
+                gridPowerBox.setAttribute('stroke', 'var(--color-grid)');
+            }
+            
+            // Update Grid text label (Buy/Sell)
+            const dailyGridBuy = tryParseFloat(latestDiagramData.dailyGridBuy);
+            const dailyGridSell = tryParseFloat(latestDiagramData.dailyGridSell);
+            const gridTextLabel = document.getElementById('daily_grid_buy');
+            const gridValueLabel = document.getElementById('daily_grid_buy_value');
+
+            if (dailyGridSell > 0.1 && dailyGridSell > dailyGridBuy) {
+                // Jika Sell lebih besar, tampilkan Sell
+                gridTextLabel.textContent = "DAILY GRID SELL";
+                gridValueLabel.textContent = `${dailyGridSell.toFixed(2)} kWh`;
+                gridValueLabel.setAttribute('fill', 'var(--color-load)'); 
+            } else {
+                // Default: Tampilkan Buy
+                gridTextLabel.textContent = "DAILY GRID BUY";
+                gridValueLabel.textContent = `${dailyGridBuy.toFixed(2)} kWh`;
+                gridValueLabel.setAttribute('fill', 'var(--color-grid)');
             }
         }
 
@@ -947,11 +984,9 @@
             const loadP = data.loadPower > 0.1 ? data.loadPower.toFixed(1) : DEFAULT_DISPLAY.toFixed(1);
             const batP = Math.abs(data.batteryPower) > 0.1 ? Math.abs(data.batteryPower).toFixed(1) : DEFAULT_DISPLAY.toFixed(1);
             
-            // Grid Power Display: Hanya tampilkan nilai jika > 10 W (BUY/IMPORT)
-            const gridPDisplay = data.gridPower > 10 ? data.gridPower.toFixed(1) : DEFAULT_DISPLAY.toFixed(1); 
+            // Grid Power Display dikontrol di calculateAndRenderDiagram
             
             setText('pv1_power_186', `${solarP} W`); 
-            setText('grid_total_power', `${gridPDisplay} W`); 
             setText('ess_power', `${loadP} W`); 
             setText('data.batteryPower_190', `${batP} W`); 
             
@@ -960,28 +995,32 @@
             setText('inverter_voltage_154', data.inverterVoltage); 
             setText('inverter_current_164', data.inverterCurrent); 
             setText('load_frequency_192', data.loadFrequency); 
-
-            // Nilai Energi Harian & SOC (dibiarkan seperti sebelumnya)
-            setText('total_solar_value', `${data.dailySolar} kWh / ${DEFAULT_DISPLAY_STR} MWh`); 
-            setText('daily_load_value', `${data.dailyLoad} kWh`); 
-            setText('daily_grid_buy_value', `${data.dailyGridBuy} kWh`);
-            setText('daily_bat_charge_value', `${data.dailyBatCharge} kWh`);
-            setText('daily_bat_dischcharge_value', `${data.dailyBatDischarge} kWh`);
+            
+            // Nilai Energi Harian & SOC (dibiarkan seperti sebelumnya, tapi menggunakan data terbaru)
+            setText('total_solar_value', `${tryParseFloat(data.dailySolar).toFixed(2)} kWh / ${DEFAULT_DISPLAY_STR} MWh`); 
+            setText('daily_load_value', `${tryParseFloat(data.dailyLoad).toFixed(2)} kWh`); 
+            
+            // Grid Buy/Sell dikontrol di calculateAndRenderDiagram
+            
+            setText('daily_bat_charge_value', `${tryParseFloat(data.dailyBatCharge).toFixed(2)} kWh`);
+            setText('daily_bat_dischcharge_value', `${tryParseFloat(data.dailyBatDischarge).toFixed(2)} kWh`);
             setText('battery_soc_184', `${data.batterySOC}% | ${DEFAULT_DISPLAY_STR}%`); 
             setText('battery_remaining_energy', data.batteryRemainingEnergy); 
             setText('duration', data.runtime); 
         }
 
+        // Fungsi yang sama
         function updateBatteryLevel(soc) {
             const batteryInner = document.getElementById('bat_inner');
             const batteryIcon = document.getElementById('battery_icon');
             if (!batteryInner || !batteryIcon) return;
             
-            if (latestDiagramData.batteryPower < -10) {
-                batteryIcon.classList.add('is-charging');
-            } else {
-                batteryIcon.classList.remove('is-charging');
-            }
+            // --- LOGIC ANIMASI DIHAPUS ---
+            // if (latestDiagramData.batteryPower < -10) {
+            //     batteryIcon.classList.add('is-charging');
+            // } else {
+            //     batteryIcon.classList.remove('is-charging');
+            // }
 
             batteryInner.querySelectorAll('rect').forEach(rect => rect.remove());
 
@@ -1068,8 +1107,11 @@
                 const data = JSON.parse(payload);
                 
                 // --- MAPPING DATA INVERTER / AC METER ---
+                // Menggunakan sensor.power_meter_ac_out_voltage_2 (inverter_voltage_154) -> volt
                 const v = tryParseFloat(data.volt).toFixed(1);
+                // Menggunakan sensor.power_meter_ac_out_current (inverter_current_164) -> current
                 const i = tryParseFloat(data.current).toFixed(1);
+                // Menggunakan sensor.power_meter_ac_freq (load_frequency_192) -> freq
                 const f = tryParseFloat(data.freq).toFixed(1);
 
                 latestDiagramData.inverterVoltage = `${v} V`;
@@ -1077,6 +1119,7 @@
                 latestDiagramData.loadFrequency = `${f} Hz`;
 
                 // MAPPING LOAD POWER (KOTAK RUMAH): Active Power Absolut dari Meter
+                // Menggunakan sensor.power_meter_ac_active_power (inverter_power_175) -> activePower
                 const activePower = tryParseFloat(data.activePower);
                 
                 // Load Power adalah Active Power yang diukur (Absolut), dibulatkan ke 1 desimal
@@ -1097,11 +1140,79 @@
             let pValue = tryParseFloat(payload);
             let shouldRecalculate = false;
 
+            // --- MAPPING KHUSUS DARI YAML (SENSOR-SENSOR SPESIFIK) ---
+            
+            // Power Inverter (inverter_power_175: sensor.power_meter_ac_active_power)
+            // Ini sudah dihandle di updatePowerMeterData
+            
+            // Grid Power (grid_power_169: sensor.sunsynk_grid_power)
+            if (topic.includes('sunsynk_grid_power')) {
+                 // Di sini asumsikan ada topik MQTT untuk sensor ini
+                 // Karena Sunsynk Power Card biasanya menggunakan nilai positif=export, negatif=import
+                 // Tapi di dasbor ini kita perlu power untuk CALCULATED GRID POWER (Net Grid Power)
+                 // Untuk sementara, kita biarkan logic Grid Power di calculateAndRenderDiagram yang menghitung net power.
+                 // Jika Anda memiliki topik MQTT langsung dari sensor sunsynk_grid_power,
+                 // Anda bisa memetakannya ke `latestDiagramData.gridPower = -pValue;` (diinvert agar positif=import)
+            }
+
+            // Daily Energy
+            // Grid Import (day_grid_import_76: sensor.sunsynk_day_grid_import)
+            if (topic.includes('sunsynk_day_grid_import')) {
+                latestDiagramData.dailyGridBuy = pValue.toFixed(2);
+            }
+            // Grid Export (day_grid_export_77: sensor.sunsynk_day_grid_export)
+            if (topic.includes('sunsynk_day_grid_export')) {
+                latestDiagramData.dailyGridSell = pValue.toFixed(2);
+            }
+            // Solar Energy (day_pv_energy_108: sensor.mppt_energy_today)
+            if (topic.includes('mppt_energy_today')) {
+                latestDiagramData.dailySolar = pValue.toFixed(2);
+            }
+            // Load Energy (day_load_energy_84: sensor.energy_harian_out)
+            if (topic.includes('energy_harian_out')) {
+                 latestDiagramData.dailyLoad = pValue.toFixed(2);
+            }
+            // Bat Charge (day_battery_charge_70: sensor.mppt_energy_today) - sama dengan dailySolar
+            // Bat Discharge (day_battery_discharge_71: sensor.energy_harian_out) - sama dengan dailyLoad
+            if (topic.includes('day_battery_charge_70')) { // Contoh mapping ke topic yang spesifik
+                latestDiagramData.dailyBatCharge = pValue.toFixed(2);
+            }
+            if (topic.includes('day_battery_discharge_71')) { // Contoh mapping ke topic yang spesifik
+                latestDiagramData.dailyBatDischarge = pValue.toFixed(2);
+            }
+            
+            // Power PV1 (pv1_power_186: sensor.mppt_power)
+            if (topic.includes('mppt_power')) {
+                latestDiagramData.solarPower = parseFloat(pValue.toFixed(1)); 
+                shouldRecalculate = true;
+            }
+            // PV1 Voltage/Current (pv1_voltage_109/pv1_current_110)
+            if (topic.includes('mppt_voltage_pv')) {
+                // Di sini kita asumsikan sensor.mppt_voltage_pv adalah voltage PV1
+                latestDiagramData.pvVoltage = `${pValue.toFixed(1)} V`;
+            }
+            if (topic.includes('mppt_current')) {
+                 // Di sini kita asumsikan sensor.mppt_current adalah current PV1
+                latestDiagramData.pvCurrent = `${pValue.toFixed(1)} A`;
+            }
+            
+            // Status (inverter_status_59: sensor.sunsynk_overall_state)
+            if (topic.includes('sunsynk_overall_state')) {
+                latestDiagramData.inverterStatus = payload;
+            }
+            
             // --- PERUBAHAN STATUS ---
-            if (keyLower === 'status') {
+            if (keyLower === 'status' || keyLower === 'sunsynk_overall_state') {
                 const statuses = payload.split(';').filter(s => s.trim() !== '');
                 
                 removeStatusItems(); 
+                
+                // Tambahkan status inverter utama jika tersedia
+                 let dataItem = document.createElement('div');
+                 dataItem.className = 'data-item status-item'; 
+                 dataItem.id = topic;
+                 dataItem.innerHTML = `<strong>INVERTER STATE</strong><div class="payload">${payload}</div>`;
+                 container.appendChild(dataItem);
 
                 statuses.forEach((status, index) => {
                     const parts = status.split('-');
@@ -1121,7 +1232,7 @@
             }
 
             // Jika bukan status, proses seperti biasa
-            let dataItem = document.getElementById(topic);
+            dataItem = document.getElementById(topic);
             
             if (!dataItem) {
                 dataItem = document.createElement('div');
@@ -1135,21 +1246,6 @@
             if (pValue !== DEFAULT_DISPLAY) {
                 let pValueFixed1 = pValue.toFixed(1);
                 
-                // --- MAPPING SOLAR POWER (KOTAK PV) ---
-                if (keyLower === 'power') { 
-                    latestDiagramData.solarPower = parseFloat(pValueFixed1); 
-                    shouldRecalculate = true;
-                }
-
-                // --- MAPPING VOLTAGE, CURRENT, & ENERGY ---
-                if (keyLower.includes('current')) {
-                    latestDiagramData.pvCurrent = `${pValueFixed1} A`;
-                } else if (keyLower.includes('vpv')) {
-                    latestDiagramData.pvVoltage = `${pValueFixed1} V`;
-                } else if (keyLower.includes('daye')) {
-                    latestDiagramData.dailySolar = pValueFixed1;
-                }
-                
                 // Gunakan payload asli jika bukan power/voltage/current atau payload sangat besar/kecil
                 if (payload.length > 5 || pValue === 0) {
                      displayPayload = pValue.toFixed(2);
@@ -1158,7 +1254,7 @@
                 }
             }
             
-            dataItem.innerHTML = `<strong>${dataKey}</strong><div class="payload">${displayPayload}</div>`;
+            dataItem.innerHTML = `<strong>${dataKey.toUpperCase()}</strong><div class="payload">${displayPayload}</div>`;
 
             if (shouldRecalculate) {
                  calculateAndRenderDiagram();
@@ -1177,24 +1273,29 @@
 
             // === Mengambil data ke variabel global ===
             if(EndTopicLower === "packvolt"){
+                // sensor.battery_monitor_battery_voltage (battery_voltage_183)
                 vpack = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "relativesoc"){
+                // sensor.bms_jbd_8s_battery_soc (battery_soc_184)
                 RSOC = pValue;
                 latestDiagramData.batterySOC = pValue; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "remainingcapacity"){
+                // ini tidak ada di YAML, tapi tetap ambil
                 remcapacity = pValue;
                 latestDiagramData.batteryRemainingEnergy = `${(pValue/1000).toFixed(1)} Ah`; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "current"){
+                // sensor.battery_monitor_battery_current (battery_current_191)
                 current = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "power"){
+                // sensor.bms_jbd_8s_battery_power (battery_power_190)
                 // MAPPING BATTERY POWER (KOTAK BATRE): Positif=Discharge, Negatif=Charge
                 power = pValue;
                 latestDiagramData.batteryPower = parseFloat(pValue.toFixed(1)); 
@@ -1202,6 +1303,7 @@
                 shouldRecalculate = true;
             }
             else if(EndTopicLower === "nominalcapacity"){
+                 // sensor.bms_jbd_8s_battery_capacity (battery_rated_capacity)
                 nomcapacity = pValue;
                 shouldUpdateSummary = true;
             }
@@ -1260,6 +1362,20 @@
                 client.subscribe('3469224/#'); 
                 client.subscribe('JBDMBS/#');
                 client.subscribe('fatkhur/pwrMeter');
+
+                // --- TOPIC TAMBAHAN DARI PEMETAAN SENSOR YAML ---
+                // Karena kita tidak tahu persis topik MQTT untuk setiap sensor Home Assistant,
+                // kita asumsikan topik berada di bawah root 'sunsynk' atau 'mppt'
+                // ATAU Anda perlu mengganti ini dengan topik MQTT yang sebenarnya dari perangkat Sunsynk/sensor
+                client.subscribe('sunsynk_grid_power');
+                client.subscribe('sunsynk_day_grid_import');
+                client.subscribe('sunsynk_day_grid_export');
+                client.subscribe('mppt_energy_today'); 
+                client.subscribe('energy_harian_out'); 
+                client.subscribe('mppt_power');
+                client.subscribe('mppt_voltage_pv');
+                client.subscribe('mppt_current');
+                client.subscribe('sunsynk_overall_state');
                 
                 calculateAndRenderDiagram(); 
             });
@@ -1273,7 +1389,8 @@
                 const topicString = topic.toString();
                 const payload = payloadBuffer.toString();
                 
-                if (topicString === "fatkhur/pwrMeter") {
+                // Peta topik spesifik Home Assistant (jika ada)
+                if (topicString === "fatkhur/pwrMeter" || topicString.includes('power_meter')) {
                     updatePowerMeterData(payload);
                 }
                 else if (topicString === "3469224/amsanmppt/log") {
@@ -1295,7 +1412,8 @@
                 else if (topicString.includes("JBDMBS") || topicString.includes("jbdmbs")) {
                     updateDataBat(topicString, payload);
                 } 
-                else if (topicString.includes("amsanmppt") || topicString.includes("AMSANMPPT") || topicString.includes("3469224")) {
+                // Topik yang tidak teridentifikasi di atas, asumsikan itu data MPPT/Inverter
+                else {
                     updateData(topicString, payload);
                 }
             });
@@ -1342,4 +1460,3 @@
     </script>
 </body>
 </html>
-

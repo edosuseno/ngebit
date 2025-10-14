@@ -289,7 +289,7 @@
 
         <!-- BAGIAN 1: DIAGRAM ALIRAN ENERGI (SVG) -->
         <div class="data-section-container">
-            <h4 class="mb-4">Visualisasi Sistem Energi</h4>
+            <h4 class="mb-4"></h4>
             <div class="w-full bg-custom-dark p-2 shadow-xl rounded-xl border border-gray-700">
                 <div class="svg-container">
                     <!-- SVG ViewBox menggunakan -2 0 490 430. Garis vertikal tengah: X=239. Garis horizontal tengah: Y=218.5 -->
@@ -621,11 +621,11 @@
 
         <!-- BAGIAN 2: MPPT, BMS, dan Log Historis -->
         <div class="data-section-container">
-            <h4 class="mb-4">MPPT & BMS Sensor Data</h4>
+            <h4 class="mb-4"></h4>
 
             <!-- MPPT Data Grid -->
             <div class="data-group">
-                <h4 class="w-full text-center mt-2"><b>MPPT Data</b></h4>
+                <h4 class="w-full text-center mt-2"><b>MPPT & BMS Sensor Data</b></h4>
                 <div id="data-container"></div>
             </div>
 
@@ -655,7 +655,7 @@
                 </div>
             </div>
 
-            <div class="p-4 bg-gray-800 rounded-lg">
+            <div class="p-4 bg-gray-800 rounded-lg max-h-[450px] overflow-hidden">
                 <div class="flex flex-wrap justify-center gap-3 mb-4" id="checkboxContainer"></div>
                 <div style="display:none;" id="loader"></div>
                 <canvas id="lineChart" width="100%" height="300"></canvas>
@@ -690,6 +690,70 @@
         let chart = null;
         let datasets = [];
 
+        // START: FUNGSI YANG DIPINDAHKAN KE LINGKUP GLOBAL
+        function createChart(labels, datasets) {
+            const ctx = document.getElementById('lineChart').getContext('2d');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#E0E0E0' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#E0E0E0' }
+                        }
+                    },
+                    elements: {
+                        line: { tension: 0.4 },
+                        point: { radius: 0 }
+                    }
+                }
+            });
+        }
+
+        function createCheckboxes() {
+            const container = document.getElementById('checkboxContainer');
+            container.innerHTML = '';
+            datasets.forEach((dataset, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-2 p-1 rounded-md';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = !dataset.hidden;
+                checkbox.id = `checkbox${index}`;
+                checkbox.className = 'w-4 h-4 rounded';
+                checkbox.style.accentColor = dataset.borderColor;
+                checkbox.addEventListener('change', (e) => {
+                    datasets[index].hidden = !e.target.checked;
+                    chart.update();
+                });
+                const labelElement = document.createElement('label');
+                labelElement.htmlFor = `checkbox${index}`;
+                labelElement.textContent = dataset.label;
+                labelElement.className = 'text-sm cursor-pointer';
+                labelElement.style.color = dataset.borderColor;
+                div.appendChild(checkbox);
+                div.appendChild(labelElement);
+                container.appendChild(div);
+            });
+        }
+        // END: FUNGSI YANG DIPINDAHKAN KE LINGKUP GLOBAL
+        
         function handleFileSelect(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -732,36 +796,11 @@
                 pointRadius: 0,
                 tension: 0.4
             }));
+            // Panggilan fungsi sekarang di lingkup global
             createChart(finalLabels, datasets);
             createCheckboxes();
         }
 
-        function createCheckboxes() {
-            const container = document.getElementById('checkboxContainer');
-            container.innerHTML = '';
-            datasets.forEach((dataset, index) => {
-                const div = document.createElement('div');
-                div.className = 'flex items-center space-x-2 p-1 rounded-md';
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = !dataset.hidden;
-                checkbox.id = `checkbox${index}`;
-                checkbox.className = 'w-4 h-4 rounded';
-                checkbox.style.accentColor = dataset.borderColor;
-                checkbox.addEventListener('change', (e) => {
-                    datasets[index].hidden = !e.target.checked;
-                    chart.update();
-                });
-                const labelElement = document.createElement('label');
-                labelElement.htmlFor = `checkbox${index}`;
-                labelElement.textContent = dataset.label;
-                labelElement.className = 'text-sm cursor-pointer';
-                labelElement.style.color = dataset.borderColor;
-                div.appendChild(checkbox);
-                div.appendChild(labelElement);
-                container.appendChild(div);
-            });
-        }
         
         // ==========================================================
         // 2. BMS CELL LOGIC (Fungsionalitas Lama)
@@ -844,7 +883,9 @@
         let cells = [];
         // Variabel global yang digunakan di file lama
         let vpack, RSOC, current, power, remcapacity, nomcapacity, cycles, cellbalance, Vdiff;
-
+        
+        // Timer Log Request
+        let logRequestTimer = null; 
 
         // ==========================================================
         // 3. DIAGRAM SVG LOGIC (Fungsionalitas Baru)
@@ -1535,16 +1576,24 @@
                     updatePowerMeterData(payload);
                 }
                 else if (topicString === "3469224/amsanmppt/log") {
+                    // Hapus timer jika ada respons, karena perangkat mulai merespons
+                    if (logRequestTimer) {
+                        clearTimeout(logRequestTimer);
+                        logRequestTimer = null;
+                    }
                     if(is_request_log == true){
                         if (payload.indexOf("Time") >= 0) {
                             csv_like_data = payload + '\n'
+                            // Jangan clear timer di sini, clear hanya ketika Fail atau endOfFile
                         } else if (payload.indexOf("endOfFile") >= 0) {
                             unshowAn();
+                            // Panggil fungsi global
                             parseCSVData(csv_like_data);
                             is_request_log=false;
                         } else if (payload.indexOf("Fail") >= 0) {
-                            unshowAn();
+                            unshowAn("LOG REQUEST FAILED: Data Not available, or broken storage on device!"); 
                             console.error("Data Not available, or broken storage!"); 
+                            is_request_log=false;
                         } else {
                             csv_like_data += payload + '\n'
                         }
@@ -1556,6 +1605,43 @@
                 // Topik yang tidak teridentifikasi di atas, asumsikan itu data MPPT/Inverter
                 else {
                     updateData(topicString, payload);
+                }
+            });
+        }
+        
+        function handleLogTimeout() {
+            is_request_log = false;
+            // Membersihkan pesan dari ringkasan BMS/MPPT agar tidak mengganggu data summary
+            const chartAreaStatus = document.querySelector('.data-section-container:last-of-type .p-4');
+            if (chartAreaStatus) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'text-center text-red-400 p-2 font-bold';
+                messageDiv.textContent = 'LOG REQUEST FAILED: No response from device within 10 seconds. Check MQTT topic or device status.';
+                
+                // Sisipkan pesan di atas chart
+                const chartCanvas = document.getElementById('lineChart');
+                chartAreaStatus.insertBefore(messageDiv, chartCanvas);
+            }
+            unshowAn();
+            console.error("Log request timed out.");
+        }
+
+
+        function unshowAn(message = "") {
+            document.getElementById("loader").style.display = "none";
+            // Hapus timer jika fungsi ini dipanggil (misalnya karena sukses atau gagal dari device)
+            if (logRequestTimer) {
+                clearTimeout(logRequestTimer);
+                logRequestTimer = null;
+            }
+        }
+        function showAn() {
+            document.getElementById("loader").style.display = "block";
+            // Hapus pesan error lama di area grafik
+            const chartAreaStatus = document.querySelector('.data-section-container:last-of-type .p-4');
+             chartAreaStatus.querySelectorAll('div').forEach(el => {
+                if (el.textContent.includes('LOG REQUEST FAILED') || el.textContent.includes('Check MQTT')) {
+                    el.remove();
                 }
             });
         }
@@ -1584,19 +1670,37 @@
         document.getElementById('requestButton').addEventListener('click', function() {
             const selectedDate = datePicker.input.value;
             const url = `1#${selectedDate}`;
-            if (client) {
+            
+            // Verifikasi koneksi sebelum publish
+            if (client && client.connected) {
+                
+                // Clear any existing timer just in case
+                if (logRequestTimer) clearTimeout(logRequestTimer);
+                
                 client.publish('3469224/amsanmppt/cmd', url); 
                 is_request_log = true;
                 showAn();
+
+                console.log(`Log request sent to '3469224/amsanmppt/cmd' with payload: ${url}`);
+                
+                // Set timeout (10 seconds)
+                logRequestTimer = setTimeout(handleLogTimeout, 10000); 
+
+            } else {
+                 // Langsung tampilkan pesan jika tidak terhubung
+                 const chartAreaStatus = document.querySelector('.data-section-container:last-of-type .p-4');
+                 if (chartAreaStatus) {
+                    const messageDiv = document.createElement('div');
+                    messageDiv.className = 'text-center text-red-400 p-2 font-bold';
+                    messageDiv.textContent = 'LOG REQUEST FAILED: MQTT Client not connected! Check your broker connection.';
+                    
+                    const chartCanvas = document.getElementById('lineChart');
+                    chartAreaStatus.insertBefore(messageDiv, chartCanvas);
+                 }
+                console.error("MQTT Client not connected!");
             }
         });
 
-        function unshowAn() {
-            document.getElementById("loader").style.display = "none";
-        }
-        function showAn() {
-            document.getElementById("loader").style.display = "block";
-        }
 
     </script>
 </body>

@@ -142,9 +142,10 @@
             --color-grid: #4FC3F7;       /* Biru Langit/Light Blue */
             --color-load: #66BB6A;       /* Hijau Cerah/Light Green */
             --color-inverter: #BBBBBB;   /* Abu-abu terang untuk Inverter */
-            --color-battery-low: #FFB74D; /* Oranye untuk SOC rendah */
+            --color-battery-low: #FFB74D; /* Kuning/Oranye untuk SOC rendah */
             --color-bar-green: #4CAF50; /* Hijau cerah untuk bar penuh */
             --color-bar-red: #E57373; /* Merah cerah untuk bar kosong */
+            --color-bar-empty: #444444; /* Abu-abu gelap untuk bar yang tidak terisi (NETRAL) */
         }
         #Solar [fill="grey"], #Solar [stroke="grey"], #Solar text, #Solar path[fill="#FFFFFF"] { 
             fill: var(--color-solar) !important; 
@@ -819,13 +820,14 @@
             solarPower: DEFAULT_DISPLAY, 
             loadPower: DEFAULT_DISPLAY, 
             batteryPower: DEFAULT_DISPLAY, 
-            gridPower: DEFAULT_DISPLAY, 
+            gridPower: DEFAULT_DISPLAY, // Dihitung: Load - Solar - Battery
+            rawGridPower: DEFAULT_DISPLAY, // BARU: Daya Grid Murni dari CT/Sensor (Positif=Import, Negatif=Export)
             
             // Daily Energy (kWh)
             dailySolar: DEFAULT_DISPLAY_STR,
             dailyLoad: DEFAULT_DISPLAY_STR,
             dailyGridBuy: DEFAULT_DISPLAY_STR,
-            dailyGridSell: DEFAULT_DISPLAY_STR, // BARU: Untuk Grid Export/Sell
+            dailyGridSell: DEFAULT_DISPLAY_STR, 
             dailyBatCharge: DEFAULT_DISPLAY_STR,
             dailyBatDischarge: DEFAULT_DISPLAY_STR,
 
@@ -885,66 +887,68 @@
         
         // FUNGSI INTI UNTUK MENGHITUNG DAN MEMPERBARUI SEMUA DATA DIAGRAM
         function calculateAndRenderDiagram() {
-            // Ambil nilai data, pastikan selalu berupa float (atau 0.0 jika belum ada data)
-            const loadPower = latestDiagramData.loadPower; 
-            const solarPower = latestDiagramData.solarPower;
-            const batteryPower = latestDiagramData.batteryPower; 
+            // Ambil nilai data yang dibutuhkan
+            const rawGridPower = latestDiagramData.rawGridPower; 
             
-            // Net Grid Power = Load - PV - BAT
-            // Positif > 0 : Buy/Import (ditarik dari Grid)
-            // Negatif < 0 : Sell/Export (dikembalikan ke Grid)
-            const netGridPowerCalc = loadPower - solarPower - batteryPower;
+            // Power Grid Display HANYA menggunakan Raw Grid Power
+            const gridFlowValue = latestDiagramData.rawGridPower; // Positif = Buy, Negatif = Sell
+            const gridAbsPower = Math.abs(gridFlowValue);
             
-            // Simpan hasil perhitungan (Buy/Sell value)
-            latestDiagramData.gridPower = parseFloat(netGridPowerCalc.toFixed(1)); 
+            // Tentukan Power yang akan ditampilkan di kotak grid
+            let displayPower;
+            
+            // Jika daya mutlak (absolut) di bawah ambang batas (misal 10W), anggap 0W
+            if (gridAbsPower < 10) {
+                displayPower = DEFAULT_DISPLAY;
+            } else {
+                displayPower = gridFlowValue;
+            }
+            
+            // Simpan nilai Grid Power yang digunakan untuk Flow/Display
+            latestDiagramData.gridPower = displayPower; 
 
             // 2. Render
             updateTextValues(latestDiagramData);
             updateBatteryLevel(latestDiagramData.batterySOC);
             
-            // 3. Kontrol Animasi Aliran
+            // 3. Kontrol Animasi Aliran (Semua aliran lain tetap berdasarkan perhitungan net)
             
-            // 1. Solar Flow (Solar -> Inverter): Selalu maju (0;1) jika ada daya
+            // 1. Solar Flow (Solar -> Inverter)
             controlFlow(['solar_flow_anim_1', 'solar_flow_anim_2'], latestDiagramData.solarPower, Math.abs(latestDiagramData.solarPower), "0;1", "1;0");
 
-            // 2. Load Flow (Inverter -> Load): Selalu maju (0;1) jika ada beban
+            // 2. Load Flow (Inverter -> Load)
             controlFlow(['load_flow_anim_1', 'load_flow_anim_2'], latestDiagramData.loadPower, Math.abs(latestDiagramData.loadPower), "0;1", "1;0");
 
             // 3. Battery Flow (Tergantung tanda BMS power)
             const batAbsPower = Math.abs(latestDiagramData.batteryPower);
             
             if (latestDiagramData.batteryPower > 10) { // Discharge (BAT -> INV, UPWARDS). Positif=Discharge
-                // Path direction 0;1 is Down (Charge). To go UP (Discharge), we use reverse: "1;0"
                 controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], 1, batAbsPower, "1;0", "0;1"); 
             } else if (latestDiagramData.batteryPower < -10) { // Charge (INV -> BAT, DOWNWARDS). Negatif=Charge
-                 // To go DOWN (Charge), we use forward: "0;1"
                  controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], -1, batAbsPower, "0;1", "1;0");
             } else {
                 controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], 0, 0, "0;1", "1;0"); 
             }
 
-            // 4. Grid Flow (HANYA AKTIF JIKA BUY/IMPORT)
-            const gridFlowValue = latestDiagramData.gridPower; // Positif = Buy
-            const gridSellValue = latestDiagramData.gridPower; // Negatif = Sell
-            const gridAbsPower = Math.abs(gridFlowValue);
+            // 4. Grid Flow (Buy/Import atau Sell/Export) HANYA BERDASARKAN rawGridPower
+            const flowValue = latestDiagramData.gridPower; 
+            const flowAbsPower = Math.abs(flowValue);
 
-            // Tampilkan Power Grid di kotak
             const gridPowerBox = document.getElementById('grid_power_box').querySelector('rect');
+            const gridPowerText = document.getElementById('grid_total_power');
 
-            if (gridFlowValue > 10) { // Buy/Import (Grid -> Inverter: 1;0)
-                // Grid flow path 0;1 is LEFT-to-RIGHT (Sell). To go RIGHT-to-LEFT (Buy), we use reverse: "1;0"
-                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], -1, gridAbsPower, "1;0", "0;1");
-                document.getElementById('grid_total_power').textContent = `${gridFlowValue.toFixed(1)} W`;
+            if (flowValue > 10) { // Buy/Import (Grid -> Inverter: 1;0)
+                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], -1, flowAbsPower, "1;0", "0;1");
+                gridPowerText.textContent = `${flowValue.toFixed(1)} W`;
                 gridPowerBox.setAttribute('stroke', 'var(--color-grid)'); // Biru (Input)
-            } else if (gridSellValue < -10) { // Sell/Export (Inverter -> Grid: 0;1)
-                 // Grid flow path 0;1 is LEFT-to-RIGHT (Sell). To go LEFT-to-RIGHT (Sell), we use forward: "0;1"
-                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 1, gridAbsPower, "0;1", "1;0");
-                document.getElementById('grid_total_power').textContent = `${Math.abs(gridSellValue).toFixed(1)} W`;
+            } else if (flowValue < -10) { // Sell/Export (Inverter -> Grid: 0;1)
+                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 1, flowAbsPower, "0;1", "1;0");
+                gridPowerText.textContent = `${flowAbsPower.toFixed(1)} W`;
                 gridPowerBox.setAttribute('stroke', 'var(--color-load)'); // Hijau (Output)
             } else {
-                // No Flow (approx 0)
+                // No Flow (0W)
                 controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 0, 0, "1;0", "0;1"); 
-                document.getElementById('grid_total_power').textContent = `${DEFAULT_DISPLAY.toFixed(1)} W`;
+                gridPowerText.textContent = `${DEFAULT_DISPLAY.toFixed(1)} W`;
                 gridPowerBox.setAttribute('stroke', 'var(--color-grid)');
             }
             
@@ -1009,32 +1013,40 @@
             setText('duration', data.runtime); 
         }
 
-        // Fungsi yang sama
+        // FUNGSI DIPERBARUI: Warna Gradient 3-Status (Merah < 30, Kuning <= 70, Hijau > 70)
         function updateBatteryLevel(soc) {
             const batteryInner = document.getElementById('bat_inner');
             const batteryIcon = document.getElementById('battery_icon');
             if (!batteryInner || !batteryIcon) return;
             
-            // --- LOGIC ANIMASI DIHAPUS ---
-            // if (latestDiagramData.batteryPower < -10) {
-            //     batteryIcon.classList.add('is-charging');
-            // } else {
-            //     batteryIcon.classList.remove('is-charging');
-            // }
-
             batteryInner.querySelectorAll('rect').forEach(rect => rect.remove());
 
             const totalBars = 8;
-            const socPerBar = 100 / totalBars;
+            const socPerBar = 100 / totalBars; // 12.5% per bar
             const barWidth = 7;
             const barHeight = 1.5;
             const startX = 5;
-            let currentY = 20;
-            // pastikan SOC adalah angka yang valid
+            let currentY = 20; // Posisi Y untuk bar Paling Atas (Bar ke-1)
+            
             soc = parseInt(soc);
             if (isNaN(soc)) soc = 0;
 
+            // --- 1. Tentukan warna berdasarkan SOC keseluruhan ---
+            let overallColor;
+            if (soc < 30) {
+                overallColor = 'var(--color-bar-red)'; // Merah
+            } else if (soc <= 70) {
+                overallColor = 'var(--color-battery-low)'; // Kuning/Oranye
+            } else {
+                overallColor = 'var(--color-bar-green)'; // Hijau
+            }
+
+            // Warna untuk bilah yang kosong (background)
+            const emptyColor = (soc < 30) ? 'var(--color-bar-red)' : 'var(--color-bar-empty)';
+
+            
             if (soc === 0) {
+                // Bilah tunggal merah untuk 0%
                 const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                 rect.setAttribute('x', startX);
                 rect.setAttribute('y', currentY);
@@ -1042,38 +1054,38 @@
                 rect.setAttribute('height', barHeight);
                 rect.setAttribute('rx', 0.5);
                 rect.setAttribute('ry', 0.5);
-                rect.setAttribute('fill', 'var(--color-bar-red)');
+                rect.setAttribute('fill', overallColor);
                 batteryInner.appendChild(rect);
                 return; 
             }
 
             for (let i = 0; i < totalBars; i++) {
-                const barSocThreshold = (i + 1) * socPerBar;
+                // i=0: Bar paling atas (SOC tertinggi)
+                // i=7: Bar paling bawah (SOC terendah)
                 
-                let barColor;
-                if (soc >= barSocThreshold) {
-                    barColor = 'var(--color-bar-green)';
-                } else if (soc > (barSocThreshold - socPerBar) && soc < barSocThreshold) {
-                    barColor = 'var(--color-battery-low)';
-                } else {
-                    barColor = 'var(--color-bar-red)';
-                }
+                // Batas bawah SOC yang dibutuhkan agar bar ini terisi
+                const minSocToFillBar = (totalBars - i) * socPerBar; 
 
-                if (soc < 25 && i > 5) { barColor = 'var(--color-bar-red)'; } 
-                else if (soc < 50 && i === 6) { barColor = 'var(--color-battery-low)'; }
+                // Cek apakah bar ini harus terisi
+                const isFilled = soc > minSocToFillBar - socPerBar;
+                
+                // Tentukan warna akhir
+                const finalBarColor = isFilled ? overallColor : emptyColor;
 
-
+                // Posisi Y: Bar teratas di y=20, kemudian turun
+                const yPosition = currentY - (i * (barHeight + 0.5));
+                
                 const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                 rect.setAttribute('x', startX);
-                rect.setAttribute('y', currentY);
+                rect.setAttribute('y', yPosition);
                 rect.setAttribute('width', barWidth);
                 rect.setAttribute('height', barHeight);
                 rect.setAttribute('rx', 0.5);
                 rect.setAttribute('ry', 0.5);
-                rect.setAttribute('fill', barColor);
+                
+                rect.setAttribute('fill', finalBarColor); 
                 
                 batteryInner.appendChild(rect);
-                currentY -= (barHeight + 0.5);
             }
         }
         
@@ -1107,11 +1119,8 @@
                 const data = JSON.parse(payload);
                 
                 // --- MAPPING DATA INVERTER / AC METER ---
-                // Menggunakan sensor.power_meter_ac_out_voltage_2 (inverter_voltage_154) -> volt
                 const v = tryParseFloat(data.volt).toFixed(1);
-                // Menggunakan sensor.power_meter_ac_out_current (inverter_current_164) -> current
                 const i = tryParseFloat(data.current).toFixed(1);
-                // Menggunakan sensor.power_meter_ac_freq (load_frequency_192) -> freq
                 const f = tryParseFloat(data.freq).toFixed(1);
 
                 latestDiagramData.inverterVoltage = `${v} V`;
@@ -1119,7 +1128,6 @@
                 latestDiagramData.loadFrequency = `${f} Hz`;
 
                 // MAPPING LOAD POWER (KOTAK RUMAH): Active Power Absolut dari Meter
-                // Menggunakan sensor.power_meter_ac_active_power (inverter_power_175) -> activePower
                 const activePower = tryParseFloat(data.activePower);
                 
                 // Load Power adalah Active Power yang diukur (Absolut), dibulatkan ke 1 desimal
@@ -1142,17 +1150,12 @@
 
             // --- MAPPING KHUSUS DARI YAML (SENSOR-SENSOR SPESIFIK) ---
             
-            // Power Inverter (inverter_power_175: sensor.power_meter_ac_active_power)
-            // Ini sudah dihandle di updatePowerMeterData
-            
-            // Grid Power (grid_power_169: sensor.sunsynk_grid_power)
-            if (topic.includes('sunsynk_grid_power')) {
-                 // Di sini asumsikan ada topik MQTT untuk sensor ini
-                 // Karena Sunsynk Power Card biasanya menggunakan nilai positif=export, negatif=import
-                 // Tapi di dasbor ini kita perlu power untuk CALCULATED GRID POWER (Net Grid Power)
-                 // Untuk sementara, kita biarkan logic Grid Power di calculateAndRenderDiagram yang menghitung net power.
-                 // Jika Anda memiliki topik MQTT langsung dari sensor sunsynk_grid_power,
-                 // Anda bisa memetakannya ke `latestDiagramData.gridPower = -pValue;` (diinvert agar positif=import)
+            // Grid Power (grid_power_169: sensor.sunsynk_grid_power atau grid_ct_power_172)
+            if (topic.includes('sunsynk_grid_power') || topic.includes('sunsynk_grid_ct_power')) {
+                 // Asumsi: Sensor Grid Power (CT) memberikan nilai Positif=Import (Buy), Negatif=Export (Sell)
+                 // Nilai mentah ini akan digunakan sebagai prioritas di calculateAndRenderDiagram
+                latestDiagramData.rawGridPower = pValue;
+                shouldRecalculate = true;
             }
 
             // Daily Energy
@@ -1364,10 +1367,8 @@
                 client.subscribe('fatkhur/pwrMeter');
 
                 // --- TOPIC TAMBAHAN DARI PEMETAAN SENSOR YAML ---
-                // Karena kita tidak tahu persis topik MQTT untuk setiap sensor Home Assistant,
-                // kita asumsikan topik berada di bawah root 'sunsynk' atau 'mppt'
-                // ATAU Anda perlu mengganti ini dengan topik MQTT yang sebenarnya dari perangkat Sunsynk/sensor
                 client.subscribe('sunsynk_grid_power');
+                client.subscribe('sunsynk_grid_ct_power'); // Menambahkan CT Power
                 client.subscribe('sunsynk_day_grid_import');
                 client.subscribe('sunsynk_day_grid_export');
                 client.subscribe('mppt_energy_today'); 

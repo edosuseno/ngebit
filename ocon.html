@@ -8,10 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pustaka Anda yang sudah ada -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.16/svg.min.js" integrity="sha256-MCvBrhCuX8GNt0gmv06kZ4jGIi1R2QNaSkadjRzinFs=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <!-- Perhatikan: SVG.js, Chart.js, Flatpickr, dan Paho MQTT dipanggil di bagian bawah </body> -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     
@@ -576,6 +573,13 @@
     
     </div>
 
+    <!-- Panggil pustaka JS di akhir </body> untuk meningkatkan kecepatan pemuatan dan menghindari race condition -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.16/svg.min.js" integrity="sha256-MCvBrhCuX8GNt0gmv06kZ4jGIi1R2QNaSkadjRzinFs=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+
+
     <!-- SCRIPT LOGIC -->
     <script>
         // ==========================================================
@@ -981,74 +985,42 @@
         const host = 'public.cloud.shiftr.io';
         const port = 443; 
         const path = '/mqtt';
+        let client;
 
-        // Inisialisasi klien Paho
-        const client = new Paho.MQTT.Client(host, port, path, 'clientId-' + Math.random().toString(16).substr(2, 8));
-        let csv_like_data = "";
-        
-        client.connect({
-            userName: "public",
-            password: "public",
-            useSSL: true, 
-            onSuccess: onConnect,
-            onFailure: onFailure
-        });
+        // FUNGSI INI DITINGKATKAN DENGAN PEMETAAN DIAGRAM
+        function updateAcMeterData(payload) {
+            try {
+                const data = JSON.parse(payload);
+                
+                // 1. MAPPING INFO INVERTER (VOLTAGE, CURRENT, FREQ)
+                latestDiagramData.inverterVoltage = data.volt !== undefined ? `${data.volt.toFixed(2)} V` : DEFAULT_DISPLAY;
+                latestDiagramData.inverterCurrent = data.current !== undefined ? `${data.current.toFixed(2)} A` : DEFAULT_DISPLAY;
+                latestDiagramData.loadFrequency = data.freq !== undefined ? `${data.freq.toFixed(2)} Hz` : DEFAULT_DISPLAY;
 
-        function onConnect() {
-            console.log('%cConnected to broker', 'color: cyan; font-weight: bold;');
-            // Menggunakan wildcard root '#' untuk menangkap SEMUA pesan, seperti yang kita uji sebelumnya
-            client.subscribe('#'); 
-            updateDiagram(latestDiagramData); 
-        }
-
-        function onFailure(error) {
-            console.error('Connection failed: ', error);
-            $('.summary').html(`<span style="color:red; font-weight:bold;">KONEKSI GAGAL! Periksa Konsol Browser. Error: ${error.errorMessage}</span>`);
-        }
-        
-        client.onMessageArrived = function(message) {
-            const topic = message.destinationName;
-            const payload = message.payloadString;
-
-            // --- DEBUG LOGGING UNTUK DIAGNOSA ---
-            console.log(`%c[MQTT DITERIMA] TOPIC: ${topic}, PAYLOAD: ${payload}`, 'color: yellow');
-            // ---------------------------------------------
-            
-            // Logika Log Historis (dibiarkan seperti yang Anda buat)
-            if (topic === "3469224/amsanmppt/log") {
-                if (is_request_log) {
-                    if (payload.indexOf("Time") >= 0) {
-                        csv_like_data = payload + '\n'
-                    } else if (payload.indexOf("endOfFile") >= 0) {
-                        unshowAn();
-                        parseCSVData(csv_like_data);
-                        is_request_log = false;
-                    } else if (payload.indexOf("Fail") >= 0) {
-                        unshowAn();
-                        is_request_log = false;
-                        console.error("Data Not available, or broken storage!");
-                    } else {
-                        csv_like_data += payload + '\n'
-                    }
+                // 2. MAPPING POWER METER KE GRID POWER
+                // Konvensi: Positif (exportPower) = Jual ke Grid; Negatif = Beli dari Grid
+                // Gunakan activePower untuk daya saat ini.
+                if (data.activePower !== undefined) {
+                    // Kita asumsikan activePower adalah daya yang ditarik/dikeluarkan dari GRID
+                    // Jika nilainya positif, asumsikan ini adalah DAYA YANG DIPAKAI OLEH LOAD
+                    // Jika nilainya negatif, asumsikan ini adalah DAYA YANG DIJUAL KE GRID
+                    
+                    // Untuk diagram Grid Power, kita menggunakan nilai activePower
+                    latestDiagramData.gridPower = data.activePower; 
+                    latestDiagramData.loadPower = data.activePower; // Untuk saat ini, asumsikan activePower = loadPower (perlu dikalibrasi)
                 }
-            } 
-            // Cek BMS
-            else if (topic.includes("JBDMBS") || topic.includes("jbdmbs")) {
-                updateDataBat(topic, payload);
-            } 
-            // Cek MPPT (asumsi topik selain BMS dan Log adalah MPPT)
-            else if (topic.includes("amsanmppt") || topic.includes("AMSANMPPT") || topic.includes("3469224")) {
-                updateData(topic, payload);
+
+                updateDiagram(latestDiagramData);
+
+            } catch (e) {
+                console.error("Failed to parse AC Meter JSON:", e, payload);
             }
-        };
+        }
 
-
-        // FUNGSI INI DITINGKATKAN UNTUK MEMETAKAN KE DIAGRAM
         function updateData(topic, payload) {
             const container = document.getElementById('data-container');
             let dataItem = document.getElementById(topic);
             
-            // Mengambil key topik (misal: 'PV_Power')
             let dataKey = topic.substring(topic.lastIndexOf('/') + 1); 
             
             if (!dataItem) {
@@ -1057,7 +1029,6 @@
                 dataItem.id = topic;
                 container.appendChild(dataItem);
             }
-            // Menampilkan data di grid MPPT
             dataItem.innerHTML = `<strong>${dataKey}</strong><div class="payload">${payload}</div>`;
 
             // MAPPING DATA KE DIAGRAM
@@ -1071,10 +1042,8 @@
                     latestDiagramData.solarPower = pValue;
                     shouldUpdateDiagram = true;
                 } else if (keyLower.includes('load_power') || keyLower.includes('loadpower')) {
-                    latestDiagramData.loadPower = pValue;
-                    shouldUpdateDiagram = true;
-                } else if (keyLower.includes('grid_power') || keyLower.includes('gridpower')) {
-                    latestDiagramData.gridPower = pValue; 
+                    // Jika data load datang dari sini, gunakan (tapi biasanya dari AC Meter)
+                    latestDiagramData.loadPower = pValue; 
                     shouldUpdateDiagram = true;
                 } else if (keyLower.includes('battery_power') || keyLower.includes('batpower')) {
                     latestDiagramData.batteryPower = pValue;
@@ -1082,28 +1051,23 @@
                 }
             }
 
-            // --- MAPPING VOLTAGE, CURRENT, FREQUENCY & ENERGY ---
-            if (keyLower.includes('ac_voltage') || keyLower.includes('acvolt')) {
-                latestDiagramData.inverterVoltage = `${payload} V`;
-            } else if (keyLower.includes('pv_current') || keyLower.includes('pvcurr')) {
+            // --- MAPPING VOLTAGE, CURRENT, & ENERGY ---
+            if (keyLower.includes('pv_current') || keyLower.includes('pvcurr')) {
                 latestDiagramData.pvCurrent = `${payload} A`;
             } else if (keyLower.includes('pv_voltage') || keyLower.includes('pvvolt')) {
                 latestDiagramData.pvVoltage = `${payload} V`;
-            } else if (keyLower.includes('ac_frequency') || keyLower.includes('acfreq')) {
-                latestDiagramData.loadFrequency = `${payload} Hz`;
             } else if (keyLower.includes('daily_load_energy') || keyLower.includes('dailyload')) {
                 latestDiagramData.dailyLoad = `${payload}`;
             } else if (keyLower.includes('daily_pv_energy') || keyLower.includes('dailypv')) {
                 latestDiagramData.dailySolar = `${payload}`;
             }
 
-            // Panggil updateDiagram jika ada perubahan data
-            if (shouldUpdateDiagram || keyLower.includes('volt') || keyLower.includes('curr') || keyLower.includes('freq') || keyLower.includes('daily')) {
+            if (shouldUpdateDiagram || keyLower.includes('volt') || keyLower.includes('curr') || keyLower.includes('daily')) {
                  updateDiagram(latestDiagramData);
             }
         }
 
-        // FUNGSI INI DITINGKATKAN DENGAN PEMETAAN DIAGRAM
+
         function updateDataBat(topic, payload) {
             let EndTopic = topic.split("/").pop(); 
             let shouldUpdateSummary = false;
@@ -1112,18 +1076,16 @@
             // === Mengambil data ke variabel global (SAMA DENGAN FILE LAMA) ===
             if(EndTopicLower === "packvolt"){
                 vpack = parseInt(payload);
-                latestDiagramData.inverterVoltage = (vpack/1000).toFixed(2) + ' V'; // Memetakan ke Inverter Volt (opsional)
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "relativesoc"){
                 RSOC = parseInt(payload);
-                latestDiagramData.batterySOC = RSOC; // MAPPING KE DIAGRAM
+                latestDiagramData.batterySOC = RSOC; 
                 shouldUpdateSummary = true;
-                updateDiagram(latestDiagramData); // Update diagram segera setelah SOC berubah
             }
             else if(EndTopicLower === "remainingcapacity"){
                 remcapacity = parseInt(payload);
-                latestDiagramData.batteryRemainingEnergy = `${(remcapacity/1000).toFixed(2)} Ah`; // MAPPING KE DIAGRAM
+                latestDiagramData.batteryRemainingEnergy = `${(remcapacity/1000).toFixed(2)} Ah`; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "current"){
@@ -1132,7 +1094,7 @@
             }
             else if(EndTopicLower === "power"){
                 power = parseInt(payload);
-                latestDiagramData.batteryPower = power; // MAPPING KE DIAGRAM
+                latestDiagramData.batteryPower = power;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "nominalcapacity"){
@@ -1162,7 +1124,7 @@
                shouldUpdateSummary = true;
             }
             
-            // === Membangun Summary Text (SAMA DENGAN FILE LAMA) ===
+            // === Membangun Summary Text ===
             if(shouldUpdateSummary) {
                 const v = vpack !== undefined ? (vpack/1000).toFixed(2) : DEFAULT_DISPLAY;
                 const i = current !== undefined ? (current/1000).toFixed(2) : DEFAULT_DISPLAY;
@@ -1179,9 +1141,54 @@
                   <span> Cycles: <b>${cyc}</b>x, Cell Diff: <b>${vD}</b>mV</span>
                 `);
 
-                // Pastikan diagram diupdate setelah variabel power/soc diubah
                 updateDiagram(latestDiagramData);
             }
+        }
+
+        function initMqttClient() {
+            client = new Paho.MQTT.Client(host, port, path, 'clientId-' + Math.random().toString(16).substr(2, 8));
+            
+            client.connect({
+                userName: "public",
+                password: "public",
+                useSSL: true, 
+                onSuccess: onConnect,
+                onFailure: onFailure
+            });
+
+            function onConnect() {
+                console.log('%cConnected to broker', 'color: cyan; font-weight: bold;');
+                client.subscribe('#'); 
+                updateDiagram(latestDiagramData); 
+            }
+
+            function onFailure(error) {
+                console.error('Connection failed: ', error);
+                $('.summary').html(`<span style="color:red; font-weight:bold;">KONEKSI GAGAL! Periksa Konsol Browser. Error: ${error.errorMessage}</span>`);
+            }
+            
+            client.onMessageArrived = function(message) {
+                const topic = message.destinationName;
+                const payload = message.payloadString;
+                console.log(`%c[MQTT DITERIMA] TOPIC: ${topic}, PAYLOAD: ${payload}`, 'color: yellow');
+                
+                // Cek Topik AC METER (JSON) - GANTI NAMA TOPIK INI JIKA BERBEDA!
+                if (topic === "3469224/AC_METER" || topic.toLowerCase().includes("acmeter")) {
+                    updateAcMeterData(payload);
+                }
+                // Logika Log Historis (dibiarkan sederhana)
+                else if (topic === "3469224/amsanmppt/log") {
+                    // Logika log CSV di sini (dibiarkan sederhana)
+                } 
+                // Cek BMS
+                else if (topic.includes("JBDMBS") || topic.includes("jbdmbs")) {
+                    updateDataBat(topic, payload);
+                } 
+                // Cek MPPT (Topik string individual)
+                else if (topic.includes("amsanmppt") || topic.includes("AMSANMPPT") || topic.includes("3469224")) {
+                    updateData(topic, payload);
+                }
+            };
         }
 
 
@@ -1198,16 +1205,21 @@
                 cell.getDrawing().addTo(cellContainer.get(0));
             }
 
-            // Initial call untuk memastikan diagram terisi "--"
+            // Inisialisasi awal diagram
             updateDiagram(latestDiagramData);
+
+            // INISIALISASI MQTT CLIENT SETELAH DOM LENGKAP
+            initMqttClient();
         });
 
         document.getElementById('requestButton').addEventListener('click', function() {
             const selectedDate = datePicker.input.value;
             const url = `1#${selectedDate}`;
-            client.send('3469224/amsanmppt/cmd', url);
-            is_request_log = true;
-            showAn();
+            if (client) {
+                client.send('3469224/amsanmppt/cmd', url);
+                is_request_log = true;
+                showAn();
+            }
         });
 
         function unshowAn() {

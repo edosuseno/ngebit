@@ -55,16 +55,16 @@
             border: none;
             border-radius: 0;
             /* Grid layout untuk item data */
-            display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Kolom lebih lebar */
             gap: 12px; /* Jarak antar kartu */
+            display: grid; /* Memastikan grid aktif di sini */
         }
 
         /* MPPT Data Item - Dibuat menjadi Card */
         .data-item {
             padding: 15px;
-            /* BACKGROUND: Disamakan dengan background container agar border menjadi pemisah */
-            background-color: #242424; 
+            /* KEMBALIKAN WARNA BACKGROUND CARD KE 2C2C2C UNTUK KONTRAK YANG LEBIH BAIK */
+            background-color: #2c2c2c; 
             border: 1px solid #3e3e3e; /* Border sedikit lebih terang */
             border-radius: 8px;
             text-align: center;
@@ -74,10 +74,11 @@
             flex-direction: column;
             justify-content: center;
             transition: transform 0.2s, box-shadow 0.2s;
+            box_shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Bayangan halus */
         }
         .data-item:hover {
             transform: translateY(-3px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            box_shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
         }
 
         .data-item strong {
@@ -90,14 +91,15 @@
 
         .data-item .payload {
             font-size: 1.5em; /* Nilai lebih besar */
-            /* FONT PAYLOAD: Diubah ke warna putih terang untuk kontras dan keseragaman */
+            /* KEMBALIKAN FONT PAYLOAD KE PUTIH TERANG UNTUK KONTRAK & KELEGANAN */
             color: #E0E0E0; 
             font-weight: 700; /* Lebih tebal */
         }
 
         /* KHUSUS UNTUK STATUS: Warna Status tetap menonjol */
         .data-item.status-item {
-             background-color: #242424; /* Disamakan dengan container */
+             /* KEMBALIKAN BG KHUSUS STATUS AGAR SAMA DENGAN CARD LAIN */
+             background-color: #2c2c2c; 
              border-color: #555;
         }
         .data-item.status-item .payload {
@@ -209,10 +211,10 @@
 
 
         #Grid #grid_total_power, #Grid #daily_grid_buy_value { fill: var(--color-grid) !important; }
-        #Load #ess_power, #Load #daily_load_value { fill: var(--color-load) !important; }
-        #battery_main #data\.batteryPower_190 { fill: var(--color-battery) !important; }
+        #Load #ess_power, #Load #daily_load_value { fill="var(--color-load)" !important; }
+        #battery_main #data\.batteryPower_190 { fill="var(--color-battery)" !important; }
         #Inverter path { fill: var(--color-inverter) !important; } 
-        #Inverter text { fill: var(--color-inverter) !important; } 
+        #Inverter text { fill="var(--color-inverter)" !important; } 
         #solar-flow path, #grid-flow path, #load-flow path, #bat-line { stroke-width: 2; }
         #solar_power_box rect, #grid_power_box rect, #load_power_box rect, #battery_power_box rect {
              fill: none; 
@@ -270,6 +272,51 @@
         /* Modal Style untuk Setup Awal */
         #initialSetupModal {
             display: none; /* SEMBUNYIKAN TOTAL */
+        }
+        
+        /* TAMBAHAN CSS UNTUK DATE PICKER */
+        .flatpickr-input {
+            /* Menambahkan warna teks putih terang untuk visibilitas */
+            color: #FFFFFF !important; 
+            /* Menghilangkan background yang gelap agar kontras lebih baik, diganti oleh container Tailwind */
+            background-color: transparent !important;
+            /* Border default dari Tailwind di HTML sudah membantu, tapi ini memastikan teks terlihat */
+        }
+        
+        /* CSS KHUSUS UNTUK RUNTIME - Menambahkan indikator status */
+        .runtime-discharging {
+            color: var(--color-battery) !important; /* Merah untuk Discharging */
+            font-weight: 700;
+        }
+        .runtime-charging {
+            color: var(--color-load) !important; /* Hijau untuk Charging */
+            font-weight: 700;
+        }
+        .runtime-default {
+            color: #C0C0C0 !important; /* Abu-abu untuk default/penuh */
+        }
+        /* Style untuk Arus Baterai di Area Runtime */
+        .battery-current-disch {
+            fill: var(--color-battery) !important; /* Merah untuk Discharge */
+            font-weight: 700;
+        }
+        .battery-current-charge {
+            fill: var(--color-load) !important; /* Hijau untuk Charge */
+            font-weight: 800;
+        }
+        /* Style baru untuk SOH */
+        .soh-good {
+            fill: var(--color-load) !important; /* Hijau (SOH baik) */
+            font-weight: 700;
+        }
+        .soh-warning {
+            fill: var(--color-bar-yellow) !important; /* Kuning (SOH peringatan) */
+            font-weight: 700;
+        }
+        .soh-default {
+            fill: #C0C0C0 !important; /* Abu-abu (Label) */
+            font-weight: 800;
+            font-size: 11px;
         }
 
     </style>
@@ -582,12 +629,13 @@
                                     </a>
                                 </svg>
 
+                                <!-- VOLTAGE & CURRENT -->
                                 <svg id="battery_1_runtime" style="overflow: visible; display: inline;">
                                     <text id="duration" x="292.375" y="395" display="" class="st4 left-align" fill="var(--color-battery)">
-                                        --
+                                        -- V
                                     </text>
                                     <text id="duration_text" x="292.375" y="410" display="" class="st3 left-align" fill="var(--color-battery)">
-                                        RUNTIME TO MIN SOC
+                                        -- A
                                     </text>
                                 </svg>
                                 
@@ -602,7 +650,7 @@
                                         </text>
                                     </svg>
                                     <svg id="battery_daily_discharge" style="overflow: visible;" x="0%" y="0%">
-                                        <text id="daily_bat_discharge_value" x="92.375" y="400" display="" class="st10 left-align" fill="var(--color-battery)">
+                                        <text id="daily_bat_dischcharge_value" x="92.375" y="400" display="" class="st10 left-align" fill="var(--color-battery)">
                                             -- kWh
                                         </text>
                                         <text id="daily_bat_dischcharge" x="92.375" y="415" display="" class="st3 left-align" fill="var(--color-battery)">
@@ -828,25 +876,34 @@
                 this.rect.attr({ fill: '#66BB6A', 'fill-opacity': 1.0 });
                 this.rect.radius(4);
                 
-                this.text = this.draw.text('---mV');
+                // --- PERBAIKAN: Default display sekarang V ---
+                this.text = this.draw.text('---V');
+                // FONT SIZE DIKURANGI AGAR TIDAK TERLALU BESAR
                 this.text.move(14 * this.zoom, (this.height - 10) * this.zoom).font({
                     fill: '#E0E0E0',
-                    size: 76,
+                    size: 40, // DIUBAH DARI 76 menjadi 40
                     family: 'monospace'
                 });
             }
             getDrawing() {
                 return this.draw;
             }
-            // MODIFIKASI: Menyesuaikan rentang LiFePO4 (3.0V - 3.65V)
+            /**
+             * Memperbarui visualisasi sel LiFePO4.
+             * Catatan: Nilai cellV kini diasumsikan dalam Volt (V) sesuai configuration.yaml,
+             * dan dikonversi ke mV di sini untuk logika rentang lama.
+             */
             setVoltage(cellV, battV, remPerc) {
-                const MIN_V = 3000; // 3.0V (0% SOC)
-                const MAX_V = 3650; // 3.65V (100% SOC normal)
-                const WARNING_V = 3300; // 3.3V (Batas bawah zona aman)
+                // Konversi V ke mV untuk logika skala bar
+                const cellVMV = cellV * 1000;
+                
+                const MIN_V_MV = 3000; // 3.0V (0% SOC)
+                const MAX_V_MV = 3650; // 3.65V (100% SOC normal)
+                const WARNING_V_MV = 3300; // 3.3V (Batas bawah zona aman)
 
-                if (cellV >= MIN_V) { 
+                if (cellVMV >= MIN_V_MV) { 
                     // Hitung persentase bar relatif terhadap rentang LFP (3000mV - 3650mV)
-                    let fillPercentage = (cellV - MIN_V) / (MAX_V - MIN_V); 
+                    let fillPercentage = (cellVMV - MIN_V_MV) / (MAX_V_MV - MIN_V_MV); 
                     
                     if (fillPercentage > 1) fillPercentage = 1; // Maksimum 100%
                     if (fillPercentage < 0) fillPercentage = 0; // Minimum 0% (meskipun kita cek cellV >= MIN_V, untuk berjaga-jaga)
@@ -854,18 +911,19 @@
                     let rectWidth = parseInt(267 * fillPercentage);
 
                     // Aturan Warna LFP:
-                    if (cellV >= WARNING_V) {
+                    if (cellVMV >= WARNING_V_MV) {
                         this.rect.attr({ fill: '#66BB6A' }); // Hijau (Aman/Normal, > 3.3V)
-                    } else if (cellV > MIN_V) {
+                    } else if (cellVMV > MIN_V_MV) {
                         this.rect.attr({ fill: '#FFC107' }); // Kuning/Oranye (Peringatan, 3.0V - 3.3V)
                     } else {
                          this.rect.attr({ fill: '#FF5252' }); // Merah (Kritis, <= 3.0V)
                     }
                     
                     this.rect.size(rectWidth, this.RECT_HEIGHT);
-                    this.text.tspan(cellV + 'mV');
+                    // --- PERBAIKAN: Tampilkan nilai dalam V dengan 2 desimal ---
+                    this.text.tspan(cellV.toFixed(2) + 'V');
                 } else {
-                    this.text.tspan('---mV');
+                    this.text.tspan('---V');
                     this.rect.size(0, this.RECT_HEIGHT);
                     this.rect.attr({ fill: '#FF5252' }); // Merah jika nilai tidak wajar
                 }
@@ -923,14 +981,16 @@
 
             // Status & Detail
             batterySOC: 0,
+            batterySOH: 100, // Nilai default SOH: 100% (asumsi)
             batteryRemainingEnergy: DEFAULT_DISPLAY_STR,
             inverterVoltage: DEFAULT_DISPLAY_STR + ' V',
             inverterCurrent: DEFAULT_DISPLAY_STR + ' A',
             loadFrequency: DEFAULT_DISPLAY_STR + ' Hz',
             pvVoltage: DEFAULT_DISPLAY_STR + ' V',
             pvCurrent: DEFAULT_DISPLAY_STR + ' A',
-            runtime: DEFAULT_DISPLAY_STR,
+            // runtime dihapus, diganti oleh Voltase dan Arus
             inverterStatus: DEFAULT_DISPLAY_STR,
+            ratioPercentage: DEFAULT_DISPLAY, // Nilai Ratio baru
             
             // Data Total Solar yang dimuat dari localStorage - DIHAPUS
             // totalSolarMWh: 0.0 
@@ -1001,7 +1061,35 @@
             
             // Simpan nilai Grid Power yang digunakan untuk Flow/Display
             latestDiagramData.gridPower = displayPower; 
+            
+            // =========================================================
+            // PERHITUNGAN RATIO (Self-Consumption Rate)
+            // =========================================================
+            const solarP = latestDiagramData.solarPower;
+            const loadP = latestDiagramData.loadPower;
+            
+            // Daya yang ditarik dari baterai (Discharge = Positif)
+            const batteryDischarge = latestDiagramData.batteryPower > 0 ? latestDiagramData.batteryPower : 0; 
+            
+            // Total Daya Mandiri (PV + Discharge Baterai)
+            const selfGeneratedPower = solarP + batteryDischarge;
+            
+            let ratio = 0;
 
+            if (loadP > 10) { // Hanya hitung jika ada beban
+                // Batasi selfGeneratedPower ke nilai maksimum loadP (agar Ratio max 100%)
+                const usedSelfGeneratedPower = Math.min(selfGeneratedPower, loadP);
+                ratio = (usedSelfGeneratedPower / loadP) * 100;
+            } else {
+                // Jika tidak ada beban atau beban sangat kecil, ratio tidak relevan atau 100% jika PV > 0
+                ratio = (solarP > 10) ? 100 : 0;
+            }
+
+            latestDiagramData.ratioPercentage = ratio;
+            // =========================================================
+            
+            // RUNTIME LOGIC DIHAPUS - DIGANTI VOLTAGE/CURRENT
+            
             // 2. Render
             updateTextValues(latestDiagramData);
             updateBatteryLevel(latestDiagramData.batterySOC, latestDiagramData.batteryPower); // Kirim batteryPower
@@ -1095,6 +1183,9 @@
             setText('inverter_current_164', data.inverterCurrent); 
             setText('load_frequency_192', data.loadFrequency); 
             
+            // Nilai Ratio Baru
+            setText('ratiop_value', `${data.ratioPercentage.toFixed(1)}%`); 
+            
             // Nilai Energi Harian & SOC (dibiarkan seperti sebelumnya, tapi menggunakan data terbaru)
             // TOTAL SOLAR AKUMULATIF DIKEMBALIKAN KE DEFAULT KARENA MODAL DIHAPUS
             setText('total_solar_value', `${tryParseFloat(data.dailySolar).toFixed(2)} kWh / ${DEFAULT_DISPLAY_STR} MWh`); 
@@ -1103,11 +1194,102 @@
             
             // Grid Buy/Sell dikontrol di calculateAndRenderDiagram
             
-            setText('daily_bat_charge_value', `${tryParseFloat(data.dailyBatCharge).toFixed(2)} kWh`);
-            setText('daily_bat_dischcharge_value', `${tryParseFloat(data.dailyBatDischarge).toFixed(2)} kWh`);
-            setText('battery_soc_184', `${data.batterySOC}% | ${DEFAULT_DISPLAY_STR}%`); 
+            // LOGIKA BARU UNTUK DAILY CHARGE/DISCHARGE (DISCHARGE diwarnai Merah Baterai)
+            const dailyCharge = tryParseFloat(data.dailyBatCharge);
+            const dailyDischarge = tryParseFloat(data.dailyBatDischarge);
+            
+            setText('daily_bat_charge_value', `${dailyCharge.toFixed(2)} kWh`);
+            setText('daily_bat_dischcharge_value', `${dailyDischarge.toFixed(2)} kWh`);
+            
+            const dischargeTextEl = document.getElementById('daily_bat_dischcharge_value');
+            if (dischargeTextEl) {
+                // Set warna merah jika nilai discharge > 0
+                if (dailyDischarge > 0.01) {
+                    dischargeTextEl.setAttribute('fill', 'var(--color-battery)');
+                } else {
+                    // Set warna abu-abu default jika tidak ada discharge (atau sangat kecil)
+                    dischargeTextEl.setAttribute('fill', '#C0C0C0'); 
+                }
+            }
+            
+            // --- PERUBAHAN: SOC | SOH ---
+            const sohValue = latestDiagramData.batterySOH !== undefined ? latestDiagramData.batterySOH : DEFAULT_DISPLAY_STR;
+            
+            // Warna untuk SOH
+            let sohFillColor = '#C0C0C0'; // Default Gray
+            let sohClassName = 'soh-default';
+            const parsedSOH = tryParseFloat(sohValue);
+
+            if (parsedSOH > 90) {
+                sohFillColor = 'var(--color-load)'; // Hijau
+                sohClassName = 'soh-good';
+            } else if (parsedSOH > 0) {
+                sohFillColor = 'var(--color-bar-yellow)'; // Kuning
+                sohClassName = 'soh-warning';
+            }
+            
+            // Update Teks SOH
+            const socElement = document.getElementById('battery_soc_184');
+            if(socElement) {
+                socElement.textContent = `${data.batterySOC}%`; // Teks pertama tetap SOC
+                
+                // Buat TSpan baru untuk SOH
+                const sohTspan = document.createElementNS("http://www.w3.org/2000/svg", "tspan");
+                sohTspan.textContent = ` | ${sohValue}% `;
+                sohTspan.setAttribute('class', sohClassName);
+                sohTspan.setAttribute('fill', sohFillColor);
+                
+                // Hapus TSpan sebelumnya (jika ada) dan tambahkan yang baru
+                // Ini adalah penanganan yang lebih andal untuk TSpan dalam SVG text
+                Array.from(socElement.childNodes).forEach(node => {
+                    if (node.nodeType === 1 && node.tagName === 'TSPAN') {
+                         node.remove();
+                    }
+                });
+                
+                // Tambahkan TSpan SOH setelah SOC
+                socElement.appendChild(sohTspan);
+            }
+            // -----------------------------
+            
             setText('battery_remaining_energy', data.batteryRemainingEnergy); 
-            setText('duration', data.runtime); 
+            
+            // --- LOGIKA VOLTAGE DAN CURRENT BATERAI DI AREA RUNTIME ---
+            const durationElement = document.getElementById('duration');
+            const durationTextElement = document.getElementById('duration_text');
+            
+            const batteryV = vpack !== undefined ? vpack.toFixed(1) : DEFAULT_DISPLAY_STR;
+            const rawBatteryI = current !== undefined ? current : DEFAULT_DISPLAY; // Ambil nilai mentah (Pos/Neg)
+            const currentThreshold = 0.1; // 0.1 A
+            
+            let displayCurrentI = Math.abs(rawBatteryI).toFixed(1);
+            
+            if (durationElement) {
+                // Baris 1: Voltase Baterai (Tetap statis)
+                durationElement.textContent = `${batteryV} V`;
+                durationElement.className = 'st4 left-align runtime-default'; // Reset class
+                
+                // Baris 2: Arus Baterai (dengan warna dinamis & status)
+                durationTextElement.className = 'st3 left-align'; // Reset class
+                
+                // PERBAIKAN LOGIKA: KEMBALIKAN LOGIKA INI KE KONVENSI USER (Negatif = Discharge)
+                if (rawBatteryI < -currentThreshold) { // Jika arus Negatif (Discharge)
+                    // DISCHARGE: Tampilkan tanda MINUS di depan angka
+                    displayCurrentI = "-" + displayCurrentI;
+                    
+                    durationTextElement.classList.add('battery-current-disch'); // Merah
+                    durationTextElement.textContent = `${displayCurrentI} A (Discharge)`;
+
+                } else if (rawBatteryI > currentThreshold) { // Jika arus Positif (Charge)
+                    // CHARGE: Tampilkan angka tanpa tanda (positif)
+                    durationTextElement.classList.add('battery-current-charge'); // Hijau
+                    durationTextElement.textContent = `${displayCurrentI} A (Charge)`;
+                } else {
+                    // IDLE
+                    durationTextElement.textContent = `${displayCurrentI} A (Idle)`;
+                }
+            }
+            // --- END LOGIKA BARU ---
         }
 
         /**
@@ -1362,6 +1544,7 @@
             if (topic.includes('mppt_energy_today')) {
                 latestDiagramData.dailySolar = pValue.toFixed(2);
             }
+            // MAPPING KHUSUS DARI UTILITY METER
             if (topic.includes('energy_harian_out')) {
                  latestDiagramData.dailyLoad = pValue.toFixed(2);
             }
@@ -1441,7 +1624,15 @@
             }
         }
 
-
+        /**
+         * Mengupdate data BMS dari MQTT.
+         * CATATAN: Disesuaikan dengan unit measurement di configuration.yaml:
+         * - packVolt (mV) -> Perlu dibagi 1000 untuk V.
+         * - current (mA) -> Perlu dibagi 1000 untuk A.
+         * - VCELL0-7 (V) -> TIDAK perlu dikonversi ke mV, langsung diproses oleh Cell Class (yang akan konversi ke mV internal).
+         * - remainingCapacity (mAh) -> Perlu dibagi 1000 untuk Ah.
+         * - VCELLDiff (mV) -> Sudah benar.
+         */
         function updateDataBat(topic, payload) {
             let EndTopic = topic.split("/").pop(); 
             let shouldUpdateSummary = false;
@@ -1453,42 +1644,47 @@
 
             // === Mengambil data ke variabel global ===
             if(EndTopicLower === "packvolt"){
-                // sensor.battery_monitor_battery_voltage (battery_voltage_183)
-                vpack = pValue;
+                // data dalam mV, konversi ke V untuk tampilan summary
+                vpack = pValue / 1000;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "relativesoc"){
-                // sensor.bms_jbd_8s_battery_soc (battery_soc_184)
                 RSOC = pValue;
                 latestDiagramData.batterySOC = pValue; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "remainingcapacity"){
-                // ini tidak ada di YAML, tapi tetap ambil
-                remcapacity = pValue;
-                latestDiagramData.batteryRemainingEnergy = `${(pValue/1000).toFixed(1)} Ah`; 
+                // data dalam mAh, konversi ke Ah untuk display diagram
+                remcapacity = pValue / 1000;
+                latestDiagramData.batteryRemainingEnergy = `${remcapacity.toFixed(1)} Ah`; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "current"){
-                // sensor.battery_monitor_battery_current (battery_current_191)
-                current = pValue;
+                 // data dalam mA, konversi ke A untuk tampilan summary
+                current = pValue / 1000;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "power"){
-                // sensor.bms_jbd_8s_battery_power (battery_power_190)
-                // MAPPING BATTERY POWER (KOTAK BATRE): Positif=Discharge, Negatif=Charge
+                // data dalam W
                 power = pValue;
                 latestDiagramData.batteryPower = parseFloat(pValue.toFixed(1)); 
                 shouldUpdateSummary = true;
                 shouldRecalculate = true;
             }
+            // Hapus logic runtime mapping:
+            // else if(EndTopicLower === "timeremaining" || EndTopicLower === "runtime" || topic.includes('runtime')) {
+            //      latestDiagramData.runtime = payload; 
+            // }
             else if(EndTopicLower === "nominalcapacity"){
-                 // sensor.bms_jbd_8s_battery_capacity (battery_rated_capacity)
-                nomcapacity = pValue;
+                 // data dalam mAh, konversi ke Ah untuk tampilan summary
+                nomcapacity = pValue / 1000;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "cyclelife"){
+                // Nilai siklus digunakan sebagai dasar (atau placeholder) SOH
                 cycles = pValue;
+                // Asumsi sederhana: SOH dihitung (atau hanya diset 100% untuk demo)
+                latestDiagramData.batterySOH = Math.max(100 - (pValue * 0.05), 80).toFixed(0); // Contoh: Turun 5% per 100 siklus, minimal 80%
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "balancestatus"){
@@ -1502,24 +1698,28 @@
             else if(EndTopicLower.startsWith('vcell')){
                 const cellIndex = parseInt(EndTopic.substring(5));
                 if (cellIndex >= 0 && cellIndex < cells.length) {
+                    // PValue sudah dalam V (sesuai configuration.yaml), kirim langsung
                     cells[cellIndex].setVoltage(pValue, vpack, RSOC);
                 }
             }
             else if(EndTopicLower === 'vcelldiff'){
+               // data dalam mV
                Vdiff = pValue;
                shouldUpdateSummary = true;
             }
             
             // === Membangun Summary Text (Menggunakan struktur grid baru) ===
             if(shouldUpdateSummary) {
-                const v = vpack !== undefined ? (vpack/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
-                const i = current !== undefined ? (current/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
+                // vpack sekarang sudah dalam V
+                const v = vpack !== undefined ? vpack.toFixed(1) : DEFAULT_DISPLAY_STR;
+                // current sekarang sudah dalam A
+                const i = current !== undefined ? current.toFixed(1) : DEFAULT_DISPLAY_STR;
                 const p = power !== undefined ? parseFloat(power).toFixed(1) : DEFAULT_DISPLAY_STR; 
                 const soc = RSOC !== undefined ? RSOC : DEFAULT_DISPLAY_STR;
                 const cyc = cycles !== undefined ? cycles : DEFAULT_DISPLAY_STR;
                 const vD = Vdiff !== undefined ? Vdiff : DEFAULT_DISPLAY_STR;
                 
-                // Content dalam format baru (KOLOM CAPACITY DIHILANGKAN)
+                // Content dalam format baru
                 const summaryHtml = `
                     <div class="summary-item"><strong>PACK VOLTAGE</strong><b>${v} V</b></div>
                     <div class="summary-item"><strong>CURRENT</strong><b>${i} A</b></div>
@@ -1544,16 +1744,16 @@
                 
                 // Langganan Topik:
                 client.subscribe('3469224/#'); 
-                client.subscribe('JBDMBS/#');
+                client.subscribe('JBDMBS/#'); // TOPIC JBDMBS DARI configuration.yaml
                 client.subscribe('fatkhur/pwrMeter');
 
                 // --- TOPIC TAMBAHAN DARI PEMETAAN SENSOR YAML ---
                 client.subscribe('sunsynk_grid_power');
-                client.subscribe('sunsynk_grid_ct_power'); // Menambahkan CT Power
+                client.subscribe('sunsynk_grid_ct_power'); 
                 client.subscribe('sunsynk_day_grid_import');
                 client.subscribe('sunsynk_day_grid_export');
                 client.subscribe('mppt_energy_today'); 
-                client.subscribe('energy_harian_out'); 
+                client.subscribe('energy_harian_out'); // <--- LANGGANAN BARU UNTUK DAILY LOAD
                 client.subscribe('mppt_power');
                 client.subscribe('mppt_voltage_pv');
                 client.subscribe('mppt_current');

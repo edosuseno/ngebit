@@ -63,7 +63,8 @@
         /* MPPT Data Item - Dibuat menjadi Card */
         .data-item {
             padding: 15px;
-            background-color: #2c2c2c; /* Warna latar belakang standar */
+            /* BACKGROUND: Disamakan dengan background container agar border menjadi pemisah */
+            background-color: #242424; 
             border: 1px solid #3e3e3e; /* Border sedikit lebih terang */
             border-radius: 8px;
             text-align: center;
@@ -89,13 +90,14 @@
 
         .data-item .payload {
             font-size: 1.5em; /* Nilai lebih besar */
-            color: #66BB6A; /* Hijau - Nilai tetap cerah */
+            /* FONT PAYLOAD: Diubah ke warna putih terang untuk kontras dan keseragaman */
+            color: #E0E0E0; 
             font-weight: 700; /* Lebih tebal */
         }
 
-        /* KHUSUS UNTUK STATUS: Gunakan warna yang berbeda agar menonjol sebagai indikator status */
+        /* KHUSUS UNTUK STATUS: Warna Status tetap menonjol */
         .data-item.status-item {
-             background-color: #383838; /* Lebih gelap */
+             background-color: #242424; /* Disamakan dengan container */
              border-color: #555;
         }
         .data-item.status-item .payload {
@@ -152,18 +154,33 @@
         .bg-custom-dark {
             background-color: #242424; /* Sedikit lebih terang dari body untuk kontras */
         }
-        /* Definisikan skema warna dan ukuran font yang disederhanakan */
-        .st3, .st4, .st8, .st10, .st12, .st13, .st14, .remaining-energy {
-            font-size: 10px;
+        
+        /* FONT DAN UKURAN TEKS SVG YANG DIPERBARUI */
+        .st3 { /* Label Kecil: Daily, Runtime Label */
+            font-size: 11px; 
             font-weight: 500;
-            fill: #E0E0E0; /* Default text color (light gray) */
+            fill: #C0C0C0; /* Light Gray */
         }
-        .st4 { font-size: 14px; font-weight: 700; } /* Untuk nilai power utama */
-        .st10 { font-size: 16px; font-weight: 700; } /* Untuk nilai energi harian/total */
-        .st13 { font-size: 20px; font-weight: 700; } /* Untuk SOC baterai */
+        .st4 { /* Nilai Power (W) */
+            font-size: 16px; 
+            font-weight: 700;
+        } 
+        .st10 { /* Nilai Energi (kWh/MWh) */
+            font-size: 18px; 
+            font-weight: 700;
+        } 
+        .st13 { /* SOC baterai */
+            font-size: 22px; 
+            font-weight: 800;
+        } 
+        .remaining-energy { /* Label Kapasitas Ah */
+            font-size: 11px;
+            font-weight: 500;
+            fill: #C0C0C0;
+        }
         
         :root {
-            --color-solar: #FFC107;      /* Orange Emas Cerah untuk Solar */
+            --color-solar: #C6FF00;      /* HIJAU STABILO BARU */
             --color-battery: #FF5252;    /* MERAH CERAH untuk Baterai (Outline) */
             --color-grid: #4FC3F7;       /* Biru Langit/Light Blue */
             --color-load: #66BB6A;       /* Hijau Cerah/Light Green */
@@ -176,20 +193,27 @@
             --color-bar-empty: #444444; /* Abu-abu gelap untuk bar yang tidak terisi (NETRAL) */
             --color-flow-highlight: #CC4400; /* Orange tua/merah pekat untuk highlight animasi */
         }
+        
+        /* WARNA PV DIBUAT STABILO */
         #Solar [fill="grey"], #Solar [stroke="grey"], #Solar text, #Solar path[fill="#FFFFFF"] { 
             fill: var(--color-solar) !important; 
             stroke: var(--color-solar) !important; 
         }
+        #grid-flow circle { r: 3.5; fill: var(--color-grid) !important; }
+        #load-flow circle { r: 3.5; fill: var(--color-load) !important; }
+        #battery_flow circle { r: 3.5; fill="var(--color-battery)" !important; }
+        #solar-flow circle { r: 3.5; fill: var(--color-solar) !important; } /* Flow dot PV juga stabilo */
+        #Solar text { fill: var(--color-solar) !important; } /* Semua teks di grup Solar juga stabilo */
+        #pv1_power_186 { fill: var(--color-solar) !important; } /* Power Box PV juga stabilo */
+        #pv2_power_label { fill: var(--color-solar) !important; } /* Voltage/Current PV juga stabilo */
+
+
         #Grid #grid_total_power, #Grid #daily_grid_buy_value { fill: var(--color-grid) !important; }
         #Load #ess_power, #Load #daily_load_value { fill: var(--color-load) !important; }
         #battery_main #data\.batteryPower_190 { fill: var(--color-battery) !important; }
         #Inverter path { fill: var(--color-inverter) !important; } 
         #Inverter text { fill: var(--color-inverter) !important; } 
         #solar-flow path, #grid-flow path, #load-flow path, #bat-line { stroke-width: 2; }
-        #solar-flow circle { r: 3.5; fill: var(--color-solar) !important; } 
-        #grid-flow circle { r: 3.5; fill: var(--color-grid) !important; }
-        #load-flow circle { r: 3.5; fill: var(--color-load) !important; }
-        #battery_flow circle { r: 3.5; fill="var(--color-battery)" !important; }
         #solar_power_box rect, #grid_power_box rect, #load_power_box rect, #battery_power_box rect {
              fill: none; 
         }
@@ -288,7 +312,7 @@
                                 DAILY SOLAR / TOTAL SOLAR
                             </text>
                             <a href="#">
-                                <text id="total_solar_value" x="239" y="55" dominant-baseline="central" text-anchor="middle" display="" class="st10" fill="var(--color-solar)">
+                                <text id="total_solar_value" x="239" y="55" dominant-baseline="central" text-anchor="middle" class="st10" fill="var(--color-solar)">
                                     -- kWh / -- MWh
                                 </text>
                             </a>
@@ -1269,6 +1293,13 @@
             let rawDataKey = topic.substring(topic.lastIndexOf('/') + 1); 
             const keyLower = rawDataKey.toLowerCase();
             
+            // --- FILTER: Abaikan topic BMS yang tidak relevan di grid MPPT ---
+            const IGNORED_BMS_STATUS = ['out', 'chg', 'bat', 'stb', 'capacity']; 
+            if (IGNORED_BMS_STATUS.includes(keyLower)) {
+                return; // Abaikan data ini
+            }
+            // ------------------------------------------------------------------
+
             // Tentukan Display Key menggunakan mapping, jika tidak ada, gunakan rawDataKey
             let displayKey = MPPT_NAME_MAPPING[rawDataKey] || rawDataKey.toUpperCase();
             
@@ -1443,19 +1474,16 @@
                 const v = vpack !== undefined ? (vpack/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
                 const i = current !== undefined ? (current/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
                 const p = power !== undefined ? parseFloat(power).toFixed(1) : DEFAULT_DISPLAY_STR; 
-                const remC = remcapacity !== undefined ? (remcapacity/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
-                const nomC = nomcapacity !== undefined ? (nomcapacity/1000).toFixed(1) : DEFAULT_DISPLAY_STR;
                 const soc = RSOC !== undefined ? RSOC : DEFAULT_DISPLAY_STR;
                 const cyc = cycles !== undefined ? cycles : DEFAULT_DISPLAY_STR;
                 const vD = Vdiff !== undefined ? Vdiff : DEFAULT_DISPLAY_STR;
                 
-                // Content dalam format baru
+                // Content dalam format baru (KOLOM CAPACITY DIHILANGKAN)
                 const summaryHtml = `
                     <div class="summary-item"><strong>PACK VOLTAGE</strong><b>${v} V</b></div>
                     <div class="summary-item"><strong>CURRENT</strong><b>${i} A</b></div>
                     <div class="summary-item"><strong>POWER</strong><b>${p} W</b></div>
                     <div class="summary-item"><strong>SOC</strong><b>${soc} %</b></div>
-                    <div class="summary-item"><strong>CAPACITY</strong><b>${remC} / ${nomC} Ah</b></div>
                     <div class="summary-item"><strong>CYCLES</strong><b>${cyc} x</b></div>
                     <div class="summary-item"><strong>CELL DIFF</strong><b>${vD} mV</b></div>
                 `;

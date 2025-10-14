@@ -88,7 +88,8 @@
         /* KHUSUS UNTUK STATUS: Gunakan warna yang berbeda agar menonjol sebagai indikator status */
         .data-item.status-item .payload {
             color: #FFC107; /* Kuning Solar untuk Status/Indicator */
-            font-size: 1.1em;
+            font-size: 0.9em;
+            font-weight: bold;
         }
 
         .summary {
@@ -267,7 +268,7 @@
                                 
                                 <!-- Nilai Daya Solar (Diposisikan tengah pada kotak) - PASTI TERLIHAT DI LAPISAN DEPAN KOTAK -->
                                 <a href="#">
-                                    <text id="pv1_power_186" x="35" y="15" dominant-baseline="central" text-anchor="middle" class="st4 st8" fill="var(--color-solar)">
+                                    <text id="pv1_power_186" x="35" y="15" dominant-baseline="central" text-anchor="middle" class="st2 st7" fill="var(--color-solar)">
                                         -- W
                                     </text>
                                 </a >
@@ -350,7 +351,7 @@
                                 
                                 <!-- Nilai Daya Grid -->
                                 <a href="#">
-                                    <!-- INI SEKARANG MENAMPILKAN NILAI GRID BUY YANG DIHITUNG -->
+                                    <!-- INI SEKARANG MENAMPILkan NILAI GRID BUY YANG DIHITUNG -->
                                     <text id="grid_total_power" x="35" y="15" dominant-baseline="central" text-anchor="middle" class="st4 st8" fill="var(--color-grid)">
                                         -- W
                                     </text>
@@ -439,7 +440,7 @@
                                     -- kWh
                                 </text>
                             </a>
-                            <text id="daily_load" x="405" y="280" display="" class="st3 left-align" fill="var(--color-load)">
+                            <text id="daily_load" x="410" y="280" display="" class="st3 left-align" fill="var(--color-load)">
                                 DAILY LOAD
                             </text>
                         </svg>
@@ -1107,7 +1108,9 @@
         
         function removeStatusItems() {
             const container = document.getElementById('data-container');
+            // Hapus semua item status yang diawali 'mppt-status-'
             container.querySelectorAll('[id^="mppt-status-"]').forEach(el => el.remove());
+            // Hapus item status lama yang mungkin masih ada
             const oldStatusItem = document.getElementById('3469224/amsanmppt/status');
             if (oldStatusItem) oldStatusItem.remove();
         }
@@ -1209,12 +1212,15 @@
                 
                 removeStatusItems(); 
                 
-                // Tambahkan status inverter utama jika tersedia
+                // Blok di bawah ini dihapus sesuai permintaan pengguna,
+                // karena status sudah dipecah ke item individual.
+                /*
                  let dataItem = document.createElement('div');
                  dataItem.className = 'data-item status-item'; 
                  dataItem.id = topic;
                  dataItem.innerHTML = `<strong>INVERTER STATE</strong><div class="payload">${payload}</div>`;
                  container.appendChild(dataItem);
+                */
 
                 statuses.forEach((status, index) => {
                     const parts = status.split('-');

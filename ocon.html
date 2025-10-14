@@ -258,7 +258,7 @@
                                     <text id="pv1_power_186" x="35" y="15" dominant-baseline="central" text-anchor="middle" class="st4 st8" fill="var(--color-solar)">
                                         -- W
                                     </text>
-                                </a>
+                                </a >
                             </svg>
 
 
@@ -278,7 +278,7 @@
                                 <!-- Titik Animasi 2 (Flow Kotak -> Inverter) -->
                                 <circle cx="0" cy="0" r="3.5" fill="var(--color-solar)">
                                     <animateMotion id="solar_flow_anim_2" repeatCount="indefinite" keyTimes="0;1" calcMode="linear" dur="2s" keyPoints="0;1">
-                                        <mpath href="#solar-line-2"></mpath>
+                                        <mpath href="#solar-line-2"></path>
                                     </animateMotion>
                                 </circle>
                             </svg>
@@ -360,7 +360,7 @@
                                 <!-- Titik Animasi 2 (Flow Kotak <-> Inverter) -->
                                 <circle cx="0" cy="0" r="3.5" fill="var(--color-grid)">
                                     <animateMotion id="grid_flow_anim_2" repeatCount="indefinite" keyTimes="1;0" calcMode="linear" dur="2s">
-                                        <mpath href="#grid-line-2"></mpath>
+                                        <mpath href="#grid-line-2"></path>
                                     </animateMotion>
                                 </circle>
                             </svg>
@@ -407,7 +407,7 @@
                                 <!-- Titik Animasi 2 (Flow Kotak -> Icon) -->
                                 <circle cx="0" cy="0" id="es-dot-2" r="3.5" fill="var(--color-load)">
                                     <animateMotion id="load_flow_anim_2" repeatCount="indefinite" keyTimes="0;1" calcMode="linear" dur="2s" keyPoints="0;1">
-                                        <mpath href="#es-line-2"></mpath>
+                                        <mpath href="#es-line-2"></path>
                                     </animateMotion>
                                 </circle>
                             </svg>
@@ -586,7 +586,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/3.0.16/svg.min.js" integrity="sha256-MCvBrhCuX8GNt0gmv06kZ4jGIi1R2QNaSkadjRzinFs=" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <!-- Ganti pustaka paho-mqtt di sini untuk menghindari konflik -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script> 
 
 
     <!-- SCRIPT LOGIC -->
@@ -790,9 +791,9 @@
         // Data yang dipetakan dari MQTT untuk Diagram
         let latestDiagramData = {
             solarPower: 0,
-            gridPower: 0,
-            loadPower: 0,
-            batteryPower: 0,
+            gridPower: 0, // Positif = Sell, Negatif = Buy (Sesuai Power Meter)
+            loadPower: 0, 
+            batteryPower: 0, // Positif = Discharge, Negatif = Charge (Sesuai BMS)
             dailySolar: DEFAULT_DISPLAY,
             dailyLoad: DEFAULT_DISPLAY,
             dailyGridBuy: DEFAULT_DISPLAY,
@@ -877,6 +878,7 @@
             setText('daily_bat_charge_value', `${data.dailyBatCharge} kWh`);
             setText('daily_bat_dischcharge_value', `${data.dailyBatDischarge} kWh`);
 
+            // Data Inverter dari Power Meter
             setText('inverter_voltage_154', data.inverterVoltage);
             setText('inverter_current_164', data.inverterCurrent);
             setText('load_frequency_192', data.loadFrequency);
@@ -894,6 +896,7 @@
             
             // Kontrol Animasi Pulse Baterai
             if (latestDiagramData.batteryPower < 0 && Math.abs(latestDiagramData.batteryPower) > 10) {
+                // batteryPower < 0 berarti CHARGE (aliran dari Inverter ke Baterai)
                 batteryIcon.classList.add('is-charging');
             } else {
                 batteryIcon.classList.remove('is-charging');
@@ -960,27 +963,33 @@
             controlFlow(['solar_flow_anim_1', 'solar_flow_anim_2'], data.solarPower, Math.abs(data.solarPower), "0;1", "1;0");
 
             // 2. Load
-            // Aliran selalu ke kanan/maju (0;1)
+            // Load Power diasumsikan selalu positif (Flow Inverter -> Load: 0;1)
             controlFlow(['load_flow_anim_1', 'load_flow_anim_2'], data.loadPower, Math.abs(data.loadPower), "0;1", "1;0");
 
             // 3. Grid
-            // Path: Grid -> Inverter (arah maju adalah 1;0)
+            // Konvensi: gridPower > 0 = Sell (Inverter -> Grid: 0;1), gridPower < 0 = Buy (Grid -> Inverter: 1;0)
             const gridAbsPower = Math.abs(data.gridPower);
-            if (data.gridPower > 0) { // Grid Buy (Grid -> Inverter)
-                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], gridAbsPower, gridAbsPower, "1;0", "0;1");
-            } else if (data.gridPower < 0) { // Grid Sell (Inverter -> Grid)
-                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], -gridAbsPower, gridAbsPower, "0;1", "0;1");
+            if (data.gridPower > 10) { // Sell to Grid (Arah Maju: 0;1)
+                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 1, gridAbsPower, "0;1", "1;0");
+                // Perbarui teks Grid untuk mencerminkan Power Out (Sell)
+                const gridPowerBox = document.getElementById('grid_total_power').parentNode.parentNode;
+                gridPowerBox.setAttribute('stroke', 'var(--color-load)'); // Ganti warna jadi hijau (seperti load/output)
+            } else if (data.gridPower < -10) { // Buy from Grid (Arah Mundur: 1;0)
+                controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], -1, gridAbsPower, "1;0", "0;1");
+                // Perbarui teks Grid untuk mencerminkan Power In (Buy)
+                const gridPowerBox = document.getElementById('grid_total_power').parentNode.parentNode;
+                gridPowerBox.setAttribute('stroke', 'var(--color-grid)'); // Biru (seperti grid/input)
             } else {
                 controlFlow(['grid_flow_anim_1', 'grid_flow_anim_2'], 0, 0, "1;0", "0;1"); 
             }
 
             // 4. Battery
-            // Path: Inverter -> Battery (arah maju adalah 0;1)
+            // Konvensi: batteryPower > 0 = Discharge (Battery -> Inverter: 1;0), batteryPower < 0 = Charge (Inverter -> Battery: 0;1)
             const batAbsPower = Math.abs(data.batteryPower);
-            if (data.batteryPower > 0) { // Discharge (Battery -> Inverter)
-                controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], batAbsPower, batAbsPower, "1;0", "0;1"); // Discharge = Mundur (1;0)
-            } else if (data.batteryPower < 0) { // Charge (Inverter -> Battery)
-                 controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], -batAbsPower, batAbsPower, "0;1", "0;1"); // Charge = Maju (0;1)
+            if (data.batteryPower > 10) { // Discharge (Arah Mundur: 1;0)
+                controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], 1, batAbsPower, "1;0", "0;1"); 
+            } else if (data.batteryPower < -10) { // Charge (Arah Maju: 0;1)
+                 controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], -1, batAbsPower, "0;1", "1;0");
             } else {
                 controlFlow(['bat_flow_anim_1', 'bat_flow_anim_2'], 0, 0, "0;1", "1;0"); 
             }
@@ -992,50 +1001,61 @@
         // ==========================================================
         
         let is_request_log = false;
+        let csv_like_data = "";
         
         // Pengaturan Koneksi MQTT (WSS)
         const host = 'public.cloud.shiftr.io';
         const port = 443; 
-        const path = '/mqtt';
-        let client;
+        
+        // Ganti Paho.MQTT.Client menjadi mqtt.connect dari pustaka mqtt.min.js
+        let client = mqtt.connect(`wss://${host}`, {
+            username: "public",
+            password: "public"
+        });
+        
+        let clientModbus; // Klien terpisah untuk Power Meter jika menggunakan MQTT.js
 
-        // FUNGSI INI DITINGKATKAN DENGAN PEMETAAN DIAGRAM
-        function updateAcMeterData(payload) {
+        // FUNGSI BARU UNTUK MENGAMBIL DATA POWER METER DARI fatkhur/pwrMeter
+        function updatePowerMeterData(payload) {
             try {
                 const data = JSON.parse(payload);
                 
                 // 1. MAPPING INFO INVERTER (VOLTAGE, CURRENT, FREQ)
+                // Voltage, Current, dan Freq diambil dari Power Meter AC
                 latestDiagramData.inverterVoltage = data.volt !== undefined ? `${data.volt.toFixed(2)} V` : DEFAULT_DISPLAY;
                 latestDiagramData.inverterCurrent = data.current !== undefined ? `${data.current.toFixed(2)} A` : DEFAULT_DISPLAY;
                 latestDiagramData.loadFrequency = data.freq !== undefined ? `${data.freq.toFixed(2)} Hz` : DEFAULT_DISPLAY;
 
-                // 2. MAPPING POWER METER KE GRID POWER DAN LOAD POWER
+                // 2. MAPPING GRID POWER
                 if (data.activePower !== undefined) {
-                    // Grid Power: Menggunakan activePower. Positif/Negatif akan menentukan arah aliran
-                    // Konvensi: Positif = Jual ke Grid (Sell), Negatif = Beli dari Grid (Buy)
+                    // Grid Power: Menggunakan activePower. 
+                    // Konvensi Meter: Positif = Jual ke Grid (Sell), Negatif = Beli dari Grid (Buy)
                     latestDiagramData.gridPower = data.activePower; 
                 }
-
-                if (data.loadPower !== undefined) {
-                    // Jika ada loadPower eksplisit dari meter, gunakan ini. Jika tidak, asumsikan activePower (jika meter hanya mengukur satu titik)
-                    latestDiagramData.loadPower = data.loadPower; 
-                } else if (data.activePower !== undefined) {
-                    // JIKA TIDAK ADA LOAD POWER EKSPLISIT: Kita asumsikan activePower adalah net power di titik meter.
-                    // Untuk diagram, kita harus MENGHITUNG BEBAN (loadPower) berdasarkan keseimbangan energi:
-                    // Load = Solar + Bat - Grid (Hanya perkiraan jika tidak ada sensor load terpisah)
-                    // Untuk saat ini, kita gunakan Grid Power sebagai Load jika tidak ada data terpisah, karena ini adalah data meter AC
-                    // TODO: Perlu kalibrasi topologi yang sebenarnya di sini. Kita set load sama dengan grid power saja untuk memastikan animasi load berjalan.
-                    // latestDiagramData.loadPower = Math.abs(data.activePower); 
-                    // Kita biarkan logika Load mengikuti logika MPPT jika ada (atau set manual ke 100 W jika kosong)
-                }
-
+                
+                // 3. MAPPING LOAD POWER
+                // Untuk Hybrid/On-Grid Inverter, Load Power sering dihitung: Load = PV + Bat + Grid (Semua dalam Watt)
+                // Asumsi: Power yang tidak terjelaskan oleh PV dan Baterai (yang diukur oleh MPPT/BMS) adalah Load.
+                // Jika topologi diukur oleh meter AC di sisi Inverter, maka:
+                // Load = PV Power + Bat Power + Grid Power (Active Power)
+                // Karena kita tidak memiliki data Load terpisah, kita akan menggunakan Active Power saja untuk simulasi alur Grid.
+                
+                // Jika ingin memperkirakan Load (dengan asumsi meter mengukur NET Power):
+                // latestDiagramData.loadPower = latestDiagramData.solarPower + latestDiagramData.batteryPower - data.activePower;
+                
+                // Namun, untuk alur diagram yang benar, kita harus mengasumsikan Power Meter fatkhur/pwrMeter mengukur Grid Power (Net)
+                // dan Load Power diupdate oleh topik MPPT (jika ada) atau dihitung dari power balance.
+                // Saat ini, kita biarkan `latestDiagramData.loadPower` diupdate oleh fungsi `updateData` (MPPT)
+                
+                // Panggil update diagram
                 updateDiagram(latestDiagramData);
 
             } catch (e) {
-                console.error("Failed to parse AC Meter JSON:", e, payload);
+                console.error("Failed to parse Power Meter JSON:", e, payload);
             }
         }
-
+        
+        // FUNGSI UNTUK MENGAMBIL DATA MPPT (Topics yang sama di kedua file)
         function updateData(topic, payload) {
             const container = document.getElementById('data-container');
             let dataItem = document.getElementById(topic);
@@ -1056,31 +1076,32 @@
             const keyLower = dataKey.toLowerCase();
             
             if (!isNaN(pValue)) {
-                // --- MAPPING POWER (Asumsi Anda mengirim data Power mentah di sini) ---
-                if (keyLower.includes('pv_power') || keyLower.includes('pvpower') || keyLower.includes('solar_power')) {
-                    latestDiagramData.solarPower = pValue;
+                // --- MAPPING POWER ---
+                if (keyLower.includes('pv_power') || keyLower.includes('pvpower') || keyLower.includes('solar_power') || keyLower.includes('power')) {
+                    // Asumsi: power di MPPT adalah Solar Power
+                    latestDiagramData.solarPower = pValue; 
                     shouldUpdateDiagram = true;
                 } else if (keyLower.includes('load_power') || keyLower.includes('loadpower') || keyLower.includes('ess_power')) {
+                    // Jika MPPT memberikan Load Power, gunakan ini
                     latestDiagramData.loadPower = pValue; 
-                    shouldUpdateDiagram = true;
-                } else if (keyLower.includes('battery_power') || keyLower.includes('batpower')) {
-                    latestDiagramData.batteryPower = pValue;
                     shouldUpdateDiagram = true;
                 }
             }
 
             // --- MAPPING VOLTAGE, CURRENT, & ENERGY ---
-            if (keyLower.includes('pv_current') || keyLower.includes('pvcurr')) {
-                latestDiagramData.pvCurrent = `${payload} A`;
-            } else if (keyLower.includes('pv_voltage') || keyLower.includes('pvvolt')) {
-                latestDiagramData.pvVoltage = `${payload} V`;
+            if (keyLower.includes('current')) {
+                // Asumsi: current di MPPT adalah PV Current
+                latestDiagramData.pvCurrent = `${pValue.toFixed(2)} A`;
+            } else if (keyLower.includes('vpv')) {
+                latestDiagramData.pvVoltage = `${pValue.toFixed(2)} V`;
+            } else if (keyLower.includes('daye')) {
+                // Asumsi: dayE di MPPT adalah Daily Solar
+                latestDiagramData.dailySolar = `${pValue.toFixed(2)}`;
             } else if (keyLower.includes('daily_load_energy') || keyLower.includes('dailyload')) {
-                latestDiagramData.dailyLoad = `${payload}`;
-            } else if (keyLower.includes('daily_pv_energy') || keyLower.includes('dailypv')) {
-                latestDiagramData.dailySolar = `${payload}`;
+                latestDiagramData.dailyLoad = `${pValue.toFixed(2)}`;
             }
-
-            if (shouldUpdateDiagram || keyLower.includes('volt') || keyLower.includes('curr') || keyLower.includes('daily')) {
+            
+            if (shouldUpdateDiagram || keyLower.includes('volt') || keyLower.includes('curr') || keyLower.includes('daily') || keyLower.includes('vpv')) {
                  updateDiagram(latestDiagramData);
             }
         }
@@ -1090,41 +1111,43 @@
             let EndTopic = topic.split("/").pop(); 
             let shouldUpdateSummary = false;
             const EndTopicLower = EndTopic.toLowerCase();
+            let pValue = parseInt(payload);
 
             // === Mengambil data ke variabel global (SAMA DENGAN FILE LAMA) ===
             if(EndTopicLower === "packvolt"){
-                vpack = parseInt(payload);
+                vpack = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "relativesoc"){
-                RSOC = parseInt(payload);
-                latestDiagramData.batterySOC = RSOC; 
+                RSOC = pValue;
+                latestDiagramData.batterySOC = pValue; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "remainingcapacity"){
-                remcapacity = parseInt(payload);
-                latestDiagramData.batteryRemainingEnergy = `${(remcapacity/1000).toFixed(2)} Ah`; 
+                remcapacity = pValue;
+                latestDiagramData.batteryRemainingEnergy = `${(pValue/1000).toFixed(2)} Ah`; 
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "current"){
-                current = parseInt(payload);
+                current = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "power"){
-                power = parseInt(payload);
-                latestDiagramData.batteryPower = power;
+                // Power BMS: Positif=Discharge, Negatif=Charge
+                power = pValue;
+                latestDiagramData.batteryPower = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "nominalcapacity"){
-                nomcapacity = parseInt(payload);
+                nomcapacity = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "cyclelife"){
-                cycles = parseInt(payload);
+                cycles = pValue;
                 shouldUpdateSummary = true;
             }
             else if(EndTopicLower === "balancestatus"){
-                cellbalance = parseInt(payload);
+                cellbalance = pValue;
                 let x = 0;
                 while ((x <cells.length)) {
                     cells[x].setBalancing(cellbalance & (0b1 << x));
@@ -1134,11 +1157,11 @@
             else if(EndTopicLower.startsWith('vcell')){
                 const cellIndex = parseInt(EndTopic.substring(5));
                 if (cellIndex >= 0 && cellIndex < cells.length) {
-                    cells[cellIndex].setVoltage(parseInt(payload), vpack, RSOC);
+                    cells[cellIndex].setVoltage(pValue, vpack, RSOC);
                 }
             }
             else if(EndTopicLower === 'vcelldiff'){
-               Vdiff = (parseInt(payload));
+               Vdiff = pValue;
                shouldUpdateSummary = true;
             }
             
@@ -1163,50 +1186,70 @@
             }
         }
 
+        // FUNGSI LAMA (INIT) - MENGGABUNGKAN KONEKSI MQTT UNTUK SEMUA DATA
         function initMqttClient() {
-            client = new Paho.MQTT.Client(host, port, path, 'clientId-' + Math.random().toString(16).substr(2, 8));
+            // client sudah diinisialisasi di luar
             
-            client.connect({
-                userName: "public",
-                password: "public",
-                useSSL: true, 
-                onSuccess: onConnect,
-                onFailure: onFailure
+            client.on("connect", () => {
+                console.log('%cConnected to broker', 'color: cyan; font-weight: bold;');
+                
+                // Langganan Topik:
+                // 1. MPPT (3469224/amsanmppt/#)
+                client.subscribe('3469224/#'); 
+                // 2. BMS (JBDMBS/#)
+                client.subscribe('JBDMBS/#');
+                // 3. Power Meter (fatkhur/pwrMeter) - Data dari pltsfathur
+                client.subscribe('fatkhur/pwrMeter');
+                
+                updateDiagram(latestDiagramData); 
             });
 
-            function onConnect() {
-                console.log('%cConnected to broker', 'color: cyan; font-weight: bold;');
-                client.subscribe('#'); 
-                updateDiagram(latestDiagramData); 
-            }
-
-            function onFailure(error) {
+            client.on("error", (error) => {
                 console.error('Connection failed: ', error);
-                $('.summary').html(`<span style="color:red; font-weight:bold;">KONEKSI GAGAL! Periksa Konsol Browser. Error: ${error.errorMessage}</span>`);
-            }
+                $('.summary').html(`<span style="color:red; font-weight:bold;">KONEKSI GAGAL! Periksa Konsol Browser. Error: ${error.message}</span>`);
+            });
             
-            client.onMessageArrived = function(message) {
-                const topic = message.destinationName;
-                const payload = message.payloadString;
-                console.log(`%c[MQTT DITERIMA] TOPIC: ${topic}, PAYLOAD: ${payload}`, 'color: yellow');
+            client.on("message", (topic, payloadBuffer) => {
+                const topicString = topic.toString();
+                const payload = payloadBuffer.toString();
+                console.log(`%c[MQTT DITERIMA] TOPIC: ${topicString}, PAYLOAD: ${payload}`, 'color: yellow');
                 
-                // Cek Topik AC METER (JSON) - GANTI NAMA TOPIK INI JIKA BERBEDA!
-                if (topic === "3469224/AC_METER" || topic.toLowerCase().includes("acmeter")) {
-                    updateAcMeterData(payload);
+                // Cek Topik Power Meter (fatkhur/pwrMeter)
+                if (topicString === "fatkhur/pwrMeter") {
+                    updatePowerMeterData(payload);
                 }
                 // Logika Log Historis (dibiarkan sederhana)
-                else if (topic === "3469224/amsanmppt/log") {
-                    // Logika log CSV di sini (dibiarkan sederhana)
+                else if (topicString === "3469224/amsanmppt/log") {
+                    if(is_request_log == true){
+                        if (payload.indexOf("Time") >= 0) {
+                            console.log("start transfer logger");
+                            csv_like_data = "";
+                            csv_like_data = payload + '\n'
+                        } else if (payload.indexOf("endOfFile") >= 0) {
+                            console.log("End transfer logger -> update chart");
+                            unshowAn();
+                            parseCSVData(csv_like_data);
+                            is_request_log=false;
+                        } else if (payload.indexOf("Fail") >= 0) {
+                            console.log("Data Not available, or broken storage!");
+                            unshowAn();
+                            is_request_log=false;
+                            // Ganti alert dengan pesan di konsol atau UI kustom
+                            console.error("Data Not available, or broken storage!"); 
+                        } else {
+                            csv_like_data += payload + '\n'
+                        }
+                    }
                 } 
                 // Cek BMS
-                else if (topic.includes("JBDMBS") || topic.includes("jbdmbs")) {
-                    updateDataBat(topic, payload);
+                else if (topicString.includes("JBDMBS") || topicString.includes("jbdmbs")) {
+                    updateDataBat(topicString, payload);
                 } 
                 // Cek MPPT (Topik string individual)
-                else if (topic.includes("amsanmppt") || topic.includes("AMSANMPPT") || topic.includes("3469224")) {
-                    updateData(topic, payload);
+                else if (topicString.includes("amsanmppt") || topicString.includes("AMSANMPPT") || topicString.includes("3469224")) {
+                    updateData(topicString, payload);
                 }
-            };
+            });
         }
 
 
@@ -1234,7 +1277,8 @@
             const selectedDate = datePicker.input.value;
             const url = `1#${selectedDate}`;
             if (client) {
-                client.send('3469224/amsanmppt/cmd', url);
+                // Topic command MPPT yang sama
+                client.publish('3469224/amsanmppt/cmd', url); 
                 is_request_log = true;
                 showAn();
             }
@@ -1250,3 +1294,4 @@
     </script>
 </body>
 </html>
+

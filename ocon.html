@@ -164,15 +164,28 @@
         #solar_power_box rect, #grid_power_box rect, #load_power_box rect, #battery_power_box rect {
              fill: none; 
         }
-        /* CSS Animasi Baterai - DIHAPUS agar ikon diam */
-        /* @keyframes battery-pulse {
-            0% { transform: scale(1.0); opacity: 1; }
-            50% { transform: scale(1.03); opacity: 0.85; }
-            100% { transform: scale(1.0); opacity: 1; }
+        
+        /* CSS Animasi Baterai BARU (HA Style) */
+        @keyframes battery-charge-glow {
+            /* MENGGUNAKAN WARNA DEFAULT BATERAI (MERAH) UNTUK GLOW SAAT CHARGING */
+            0%, 100% { filter: drop-shadow(0 0 1px var(--color-battery)); } 
+            50% { filter: drop-shadow(0 0 5px var(--color-battery)); }
         }
-        .is-charging {
-            animation: battery-pulse 1.5s infinite;
-        } */
+        @keyframes battery-discharge-glow {
+            0%, 100% { filter: drop-shadow(0 0 1px var(--color-battery)); }
+            50% { filter: drop-shadow(0 0 5px var(--color-battery)); }
+        }
+        
+        #battery_icon.charging {
+            animation: battery-charge-glow 2s infinite ease-in-out;
+        }
+        #battery_icon.discharging {
+            animation: battery-discharge-glow 2s infinite ease-in-out;
+        }
+        #battery_icon.low-soc {
+             /* Tidak perlu animasi glow saat low, cukup warna merah/orange */
+             filter: drop-shadow(0 0 1px var(--color-bar-red));
+        }
 
         /* Styling Cell BMS */
         .voltages, .summary { 
@@ -212,12 +225,21 @@
         }
         @-webkit-keyframes spin { 0% { -webkit-transform: rotate(0deg); } 100% { -webkit-transform: rotate(360deg); } }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Modal Style untuk Setup Awal */
+        #initialSetupModal {
+            display: none; /* SEMBUNYIKAN TOTAL */
+        }
 
     </style>
 </head>
 <body>
     
-    <div class="main-container">
+    <!-- MODAL INPUT AWAL DIHAPUS DARI TAMPILAN -->
+    
+    <!-- MAIN DASHBOARD CONTENT (DITAMPILKAN SECARA DEFAULT) -->
+    <div id="dashboardContent" class="main-container">
+        
         <!-- HEADER -->
         <header class="text-center mb-6">
             <h1 class="text-3xl font-bold text-gray-100">PLTS Online Monitoring Dashboard</h1>
@@ -489,12 +511,9 @@
                                     <a href="#">
                                         <svg id="bat_outter" y="338.5" width="78.75" height="78.75" preserveAspectRatio="none" viewBox="0 0 24 24" x="213.0">
                                             <defs>
-                                                <linearGradient id="bLg-bat1" x1="0%" x2="0%" y1="100%" y2="0%">
-                                                    <stop offset="0%" stop-color="var(--color-battery)"></stop>
-                                                    <stop offset="100%" stop-color="var(--color-battery)"></stop>
-                                                </linearGradient>
+                                                <!-- Gradien lama dihapus karena kita pakai warna solid dan animasi glow di CSS -->
                                             </defs>
-                                            <path fill="url(#bLg-bat1)" d="M12 20H4V6h8L12 20m.67-16H11V2H5v2H3.33C2.6 4 2 4.6 2 5.33v15.34C2 21.4 2.6 22 3.33 22h9.34c.74 0 1.33-.59 1.33-1.33V5.33C14 4.6 13.4 4 12.67 4"></path>
+                                            <path fill="var(--color-battery)" d="M12 20H4V6h8L12 20m.67-16H11V2H5v2H3.33C2.6 4 2 4.6 2 5.33v15.34C2 21.4 2.6 22 3.33 22h9.34c.74 0 1.33-.59 1.33-1.33V5.33C14 4.6 13.4 4 12.67 4"></path>
                                         </svg>
                                         <svg id="bat_inner" y="342" width="78.75" height="68.75" preserveAspectRatio="none" viewBox="0 0 24 24" x="211.0">
                                             <!-- Bar level akan diisi ulang oleh JS -->
@@ -767,19 +786,36 @@
             getDrawing() {
                 return this.draw;
             }
+            // MODIFIKASI: Menyesuaikan rentang LiFePO4 (3.0V - 3.65V)
             setVoltage(cellV, battV, remPerc) {
-                if (cellV > 3000 && cellV < 4200) { 
-                    let fillPercentage = (cellV - 3000) / (4200 - 3000); // 3V-4.2V
+                const MIN_V = 3000; // 3.0V (0% SOC)
+                const MAX_V = 3650; // 3.65V (100% SOC normal)
+                const WARNING_V = 3300; // 3.3V (Batas bawah zona aman)
+
+                if (cellV >= MIN_V) { 
+                    // Hitung persentase bar relatif terhadap rentang LFP (3000mV - 3650mV)
+                    let fillPercentage = (cellV - MIN_V) / (MAX_V - MIN_V); 
+                    
+                    if (fillPercentage > 1) fillPercentage = 1; // Maksimum 100%
+                    if (fillPercentage < 0) fillPercentage = 0; // Minimum 0% (meskipun kita cek cellV >= MIN_V, untuk berjaga-jaga)
+                    
                     let rectWidth = parseInt(267 * fillPercentage);
 
-                    this.rect.attr({
-                        fill: fillPercentage > 0.6 ? '#66BB6A' : (fillPercentage > 0.3 ? '#FFC107' : '#FF5252')
-                    });
+                    // Aturan Warna LFP:
+                    if (cellV >= WARNING_V) {
+                        this.rect.attr({ fill: '#66BB6A' }); // Hijau (Aman/Normal, > 3.3V)
+                    } else if (cellV > MIN_V) {
+                        this.rect.attr({ fill: '#FFC107' }); // Kuning/Oranye (Peringatan, 3.0V - 3.3V)
+                    } else {
+                         this.rect.attr({ fill: '#FF5252' }); // Merah (Kritis, <= 3.0V)
+                    }
+                    
                     this.rect.size(rectWidth, this.RECT_HEIGHT);
                     this.text.tspan(cellV + 'mV');
                 } else {
                     this.text.tspan('---mV');
                     this.rect.size(0, this.RECT_HEIGHT);
+                    this.rect.attr({ fill: '#FF5252' }); // Merah jika nilai tidak wajar
                 }
             }
             setBalancing(balancing) {
@@ -803,6 +839,7 @@
         
         const DEFAULT_DISPLAY = 0.0;
         const DEFAULT_DISPLAY_STR = '--';
+        // const STORAGE_KEY_TOTAL_SOLAR = 'plts_total_solar_mwh'; // DIHAPUS
 
         // Helper untuk parsing angka yang aman
         function tryParseFloat(value) {
@@ -840,8 +877,13 @@
             pvVoltage: DEFAULT_DISPLAY_STR + ' V',
             pvCurrent: DEFAULT_DISPLAY_STR + ' A',
             runtime: DEFAULT_DISPLAY_STR,
-            inverterStatus: DEFAULT_DISPLAY_STR
+            inverterStatus: DEFAULT_DISPLAY_STR,
+            
+            // Data Total Solar yang dimuat dari localStorage - DIHAPUS
+            // totalSolarMWh: 0.0 
         };
+        // Tambahkan kembali totalSolarMWh ke object data agar tidak error pada updateTextValues
+        latestDiagramData.totalSolarMWh = 0.0;
 
         // Fungsi yang sama
         function getFlowDuration(power) {
@@ -909,7 +951,7 @@
 
             // 2. Render
             updateTextValues(latestDiagramData);
-            updateBatteryLevel(latestDiagramData.batterySOC);
+            updateBatteryLevel(latestDiagramData.batterySOC, latestDiagramData.batteryPower); // Kirim batteryPower
             
             // 3. Kontrol Animasi Aliran (Semua aliran lain tetap berdasarkan perhitungan net)
             
@@ -1001,7 +1043,9 @@
             setText('load_frequency_192', data.loadFrequency); 
             
             // Nilai Energi Harian & SOC (dibiarkan seperti sebelumnya, tapi menggunakan data terbaru)
+            // TOTAL SOLAR AKUMULATIF DIKEMBALIKAN KE DEFAULT KARENA MODAL DIHAPUS
             setText('total_solar_value', `${tryParseFloat(data.dailySolar).toFixed(2)} kWh / ${DEFAULT_DISPLAY_STR} MWh`); 
+            
             setText('daily_load_value', `${tryParseFloat(data.dailyLoad).toFixed(2)} kWh`); 
             
             // Grid Buy/Sell dikontrol di calculateAndRenderDiagram
@@ -1013,8 +1057,12 @@
             setText('duration', data.runtime); 
         }
 
-        // FUNGSI DIPERBARUI: Warna Gradient 3-Status (Merah < 30, Kuning <= 70, Hijau > 70)
-        function updateBatteryLevel(soc) {
+        /**
+         * FUNGSI BARU: Mengupdate level dan animasi baterai sesuai SOC dan aliran daya.
+         * @param {number} soc State of Charge (0-100).
+         * @param {number} batPower Power baterai (Positif = Discharge, Negatif = Charge).
+         */
+        function updateBatteryLevel(soc, batPower) {
             const batteryInner = document.getElementById('bat_inner');
             const batteryIcon = document.getElementById('battery_icon');
             if (!batteryInner || !batteryIcon) return;
@@ -1026,30 +1074,45 @@
             const barWidth = 7;
             const barHeight = 1.5;
             const startX = 5;
-            let currentY = 20; // Posisi Y untuk bar Paling Atas (Bar ke-1)
+            
+            // TITIK AWAL VISUAL BAR: Y kecil berarti Paling Atas di layar SVG.
+            const startYVisual = 6; 
             
             soc = parseInt(soc);
-            if (isNaN(soc)) soc = 0;
+            if (isNaN(soc) || soc < 0) soc = 0;
+            if (soc > 100) soc = 100;
 
-            // --- 1. Tentukan warna berdasarkan SOC keseluruhan ---
+            // --- 1. Tentukan Warna dan Status Global ---
             let overallColor;
+            batteryIcon.classList.remove('charging', 'discharging', 'low-soc');
+
             if (soc < 30) {
                 overallColor = 'var(--color-bar-red)'; // Merah
+                batteryIcon.classList.add('low-soc');
             } else if (soc <= 70) {
                 overallColor = 'var(--color-battery-low)'; // Kuning/Oranye
             } else {
                 overallColor = 'var(--color-bar-green)'; // Hijau
             }
-
+            
             // Warna untuk bilah yang kosong (background)
             const emptyColor = (soc < 30) ? 'var(--color-bar-red)' : 'var(--color-bar-empty)';
 
+            // --- 2. Kontrol Animasi Glow (HA Style) ---
+            if (batPower < -10) { // Charging (Negatif)
+                 batteryIcon.classList.add('charging');
+            } else if (batPower > 10) { // Discharging (Positif)
+                 batteryIcon.classList.add('discharging');
+            }
+
+
+            // --- 3. Render Bar Level ---
             
+            // Bar untuk 0% (hanya 1 bar kecil)
             if (soc === 0) {
-                // Bilah tunggal merah untuk 0%
                 const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                 rect.setAttribute('x', startX);
-                rect.setAttribute('y', currentY);
+                rect.setAttribute('y', startYVisual);
                 rect.setAttribute('width', barWidth);
                 rect.setAttribute('height', barHeight);
                 rect.setAttribute('rx', 0.5);
@@ -1060,20 +1123,20 @@
             }
 
             for (let i = 0; i < totalBars; i++) {
-                // i=0: Bar paling atas (SOC tertinggi)
-                // i=7: Bar paling bawah (SOC terendah)
+                // i=0 merepresentasikan SOC tertinggi (87.5%-100%) dan harus menjadi bar paling atas (yPosition terkecil)
+                // i=7 merepresentasikan SOC terendah (0%-12.5%) dan harus menjadi bar paling bawah (yPosition terbesar)
                 
                 // Batas bawah SOC yang dibutuhkan agar bar ini terisi
                 const minSocToFillBar = (totalBars - i) * socPerBar; 
 
                 // Cek apakah bar ini harus terisi
-                const isFilled = soc > minSocToFillBar - socPerBar;
+                const isFilled = soc > (minSocToFillBar - socPerBar);
                 
                 // Tentukan warna akhir
                 const finalBarColor = isFilled ? overallColor : emptyColor;
 
-                // Posisi Y: Bar teratas di y=20, kemudian turun
-                const yPosition = currentY - (i * (barHeight + 0.5));
+                // Perhitungan Posisi Y: Y meningkat seiring i meningkat (Top-Down drawing)
+                const yPosition = startYVisual + (i * (barHeight + 0.5));
                 
                 const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
                 rect.setAttribute('x', startX);
@@ -1088,9 +1151,13 @@
                 batteryInner.appendChild(rect);
             }
         }
-        
+
         // ==========================================================
-        // 4. MQTT LOGIC & DATA MAPPING
+        // 4. LOGIC STORAGE (DIHAPUS)
+        // ==========================================================
+
+        // ==========================================================
+        // 5. MQTT LOGIC & DATA MAPPING
         // ==========================================================
         
         let is_request_log = false;
@@ -1212,16 +1279,6 @@
                 
                 removeStatusItems(); 
                 
-                // Blok di bawah ini dihapus sesuai permintaan pengguna,
-                // karena status sudah dipecah ke item individual.
-                /*
-                 let dataItem = document.createElement('div');
-                 dataItem.className = 'data-item status-item'; 
-                 dataItem.id = topic;
-                 dataItem.innerHTML = `<strong>INVERTER STATE</strong><div class="payload">${payload}</div>`;
-                 container.appendChild(dataItem);
-                */
-
                 statuses.forEach((status, index) => {
                     const parts = status.split('-');
                     const statusKey = parts[0] || 'STATUS';
@@ -1427,7 +1484,7 @@
 
 
         // ==========================================================
-        // 5. EVENT HANDLERS & INITIALIZATION
+        // 6. EVENT HANDLERS & INITIALIZATION
         // ==========================================================
 
         $(document).ready(function() {

@@ -159,33 +159,33 @@
         
         /* FONT DAN UKURAN TEKS SVG YANG DIPERBARUI */
         .st3 { /* Label Kecil: Daily, Runtime Label */
-            font-size: 11px; 
-            font-weight: 500;
+            font-size: 12px; 
+            font-weight: 400;
             fill: #C0C0C0; /* Light Gray */
         }
         .st4 { /* Nilai Power (W) */
-            font-size: 16px; 
+            font-size: 14px; 
             font-weight: 700;
         } 
         .st10 { /* Nilai Energi (kWh/MWh) */
             font-size: 18px; 
-            font-weight: 700;
+            font-weight: 500;
         } 
         .st13 { /* SOC baterai */
-            font-size: 22px; 
-            font-weight: 800;
+            font-size: 20px; 
+            font-weight: 600;
         } 
         .remaining-energy { /* Label Kapasitas Ah */
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 500;
             fill: #C0C0C0;
         }
         
         :root {
-            --color-solar: #C6FF00;      /* HIJAU STABILO BARU */
-            --color-battery: #FF5252;    /* MERAH CERAH untuk Baterai (Outline) */
+            --color-solar: #FFAB2E;      /* HIJAU STABILO BARU */
+            --color-battery: #FA3737;    /* MERAH CERAH untuk Baterai (Outline) */
             --color-grid: #4FC3F7;       /* Biru Langit/Light Blue */
-            --color-load: #66BB6A;       /* Hijau Cerah/Light Green */
+            --color-load: #00FF77;       /* Hijau Cerah/Light Green */
             --color-inverter: #BBBBBB;   /* Abu-abu terang untuk Inverter */
             --color-battery-low: #FFB74D; /* Kuning/Oranye untuk SOC rendah (Default) */
             --color-bar-green: #4CAF50; /* Hijau cerah (>= 75%) */
@@ -631,7 +631,7 @@
 
                                 <!-- VOLTAGE & CURRENT -->
                                 <svg id="battery_1_runtime" style="overflow: visible; display: inline;">
-                                    <text id="duration" x="292.375" y="395" display="" class="st4 left-align" fill="var(--color-battery)">
+                                    <text id="duration" x="292.375" y="395" display="" class="st4 left-align" fill="var(--color-inverter)">
                                         -- V
                                     </text>
                                     <text id="duration_text" x="292.375" y="410" display="" class="st3 left-align" fill="var(--color-battery)">
@@ -1321,7 +1321,7 @@
             let overallColorStop; // Warna solid untuk stop gradient
             
             if (soc >= 75) {
-                overallColorStop = 'var(--color-bar-green)'; // Hijau Penuh
+                overallColorStop = 'var(--color-bar-yellow)'; // Hijau Penuh
             } else if (soc >= 50) {
                 overallColorStop = 'var(--color-bar-green-light)'; // Hijau Stabilo
             } else if (soc >= 30) {
@@ -1345,7 +1345,7 @@
             gradient.setAttribute('x1', '0%');
             gradient.setAttribute('y1', '0%'); 
             gradient.setAttribute('x2', '0%');
-            gradient.setAttribute('y2', '20%'); // Ulangi setiap 20%
+            gradient.setAttribute('y2', '30%'); // Ulangi setiap 20%
             gradient.setAttribute('spreadMethod', 'repeat');
             gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
 
@@ -1358,19 +1358,19 @@
             // Stop 2: Warna Highlight Flow (Merah/Oranye) - Lebih tebal dan pekat
             let stop2 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop2.setAttribute('offset', '20%');
-            stop2.setAttribute('stop-color', 'var(--color-flow-highlight)'); // Merah/Oranye Pekat
+            stop2.setAttribute('stop-color', '#D00000'); // Merah/Oranye Pekat
             stop2.setAttribute('stop-opacity', '1.0'); 
 
             // Stop 3: Transition kembali ke Base Color
             let stop3 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
-            stop3.setAttribute('offset', '40%');
-            stop3.setAttribute('stop-color', overallColorStop);
+            stop3.setAttribute('offset', '30%');
+            stop3.setAttribute('stop-color', '#FF6B00');
             stop3.setAttribute('stop-opacity', '1.0'); 
             
             // Stop 4: Warna Dasar (sisanya)
             let stop4 = document.createElementNS("http://www.w3.org/2000/svg", "stop");
             stop4.setAttribute('offset', '100%');
-            stop4.setAttribute('stop-color', overallColorStop);
+            stop4.setAttribute('stop-color', '#FFD700');
             stop4.setAttribute('stop-opacity', '1.0');
 
             gradient.appendChild(stop1);
@@ -1382,8 +1382,8 @@
             let animMotion = document.createElementNS("http://www.w3.org/2000/svg", "animateTransform");
             animMotion.setAttribute('attributeName', 'gradientTransform');
             animMotion.setAttribute('type', 'translate');
-            animMotion.setAttribute('from', '0 0');
-            animMotion.setAttribute('to', '0 20'); // Pindahkan 20 unit ke bawah (visual naik, karena y1=0%, y2=20%)
+            animMotion.setAttribute('from', '0 20');
+            animMotion.setAttribute('to', '0 0'); // Pindahkan 20 unit ke bawah (visual naik, karena y1=0%, y2=20%)
             animMotion.setAttribute('dur', '2.0s'); // DIPERLAMBAT MENJADI 2.0S
             animMotion.setAttribute('repeatCount', 'indefinite');
             
